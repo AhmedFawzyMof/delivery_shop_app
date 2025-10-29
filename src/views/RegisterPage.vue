@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -60,9 +61,33 @@ function handleFileUpload(event: Event) {
   }
 }
 
-function handleRegister() {
-  console.log("بيسجل الحساب:", formData.value);
-  // router.push("/driver-panel");
+async function handleRegister() {
+  try {
+    const data = new FormData();
+    for (const key in formData.value) {
+      if (key === "license_photo" && formData.value.license_photo) {
+        data.append(key, formData.value.license_photo);
+      } else {
+        data.append(
+          key,
+          formData.value[key as keyof typeof formData.value] as string
+        );
+      }
+    }
+
+    await httpRequest({
+      method: "POST",
+      url: "/api/drivers",
+      data,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    toast.success("تم تسجيل حسابك بنجاح!");
+    router.push("/driver-panel");
+  } catch (error: any) {
+    toast.error(error.message || "فشل تسجيل الحساب.");
+  }
 }
 
 function goToLogin() {
