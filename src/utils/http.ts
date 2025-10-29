@@ -52,7 +52,7 @@ async function fetchAndroidRequest<T>(options: HttpRequestOptions) {
 
     return (await response.data) as T;
   } catch (error) {
-    alert("Unsupported platform");
+    alert((error as Error).message);
     console.error("Fetch request failed:", error);
     throw error;
   }
