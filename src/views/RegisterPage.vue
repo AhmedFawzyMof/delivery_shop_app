@@ -79,9 +79,6 @@ async function handleRegister() {
       method: "POST",
       url: "/api/drivers",
       data,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
     });
     toast.success("تم تسجيل حسابك بنجاح!");
     router.push("/driver-panel");
