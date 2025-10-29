@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldCheck, CircleDollarSign, Zap } from "lucide-vue-next";
 import { useRouter } from "vue-router";
+import { Capacitor } from "@capacitor/core";
 
 const router = useRouter();
 
@@ -22,6 +23,9 @@ function goToRegister() {
         <h1 class="text-5xl font-extrabold tracking-tight mb-2">
           Delivery Shop
         </h1>
+        <p>
+          {{ Capacitor.getPlatform() }}
+        </p>
         <p class="text-xl mb-6">Connect. Deliver. Earn.</p>
         <div class="flex items-center justify-center mb-8">
           <img src="/logo.webp" alt="Logo" class="rounded-full" />
