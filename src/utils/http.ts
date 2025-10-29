@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 
-import { Http as CapacitorHttp } from "@capacitor/http";
+import { CapacitorHttp } from "@capacitor/core";
 
 const baseUrl = "http://192.168.1.8:3000";
 interface HttpRequestOptions {
@@ -11,11 +11,15 @@ interface HttpRequestOptions {
 }
 
 export async function httpRequest<T>(options: HttpRequestOptions): Promise<T> {
-  if (Capacitor.getPlatform() !== "web") {
+  if (Capacitor.getPlatform() === "web") {
     return fetchWebRequest<T>(options);
   }
 
-  return fetchAndroidRequest<T>(options);
+  if (Capacitor.getPlatform() === "android") {
+    return fetchAndroidRequest<T>(options);
+  }
+
+  throw new Error("Unsupported platform");
 }
 
 async function fetchAndroidRequest<T>(options: HttpRequestOptions) {
