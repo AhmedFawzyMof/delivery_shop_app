@@ -2,7 +2,7 @@ import { Capacitor } from "@capacitor/core";
 
 import { CapacitorHttp } from "@capacitor/core";
 
-const baseUrl = "http://localhost:3000";
+const baseUrl = "http://192.168.1.8:3000";
 interface HttpRequestOptions {
   url: string;
   method?: "GET" | "POST" | "PUT" | "DELETE";
@@ -26,6 +26,7 @@ async function fetchAndroidRequest<T>(options: HttpRequestOptions) {
     headers: {
       ...headers,
     },
+    credentials: "include",
   };
 
   if (data && (method === "POST" || method === "PUT")) {
@@ -59,6 +60,7 @@ async function fetchWebRequest<T>(options: HttpRequestOptions): Promise<T> {
     headers: {
       ...headers,
     },
+    credentials: "include",
   };
 
   if (data && (method === "POST" || method === "PUT")) {

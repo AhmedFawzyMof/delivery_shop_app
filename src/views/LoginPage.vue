@@ -20,18 +20,19 @@ import {
 } from "@/components/ui/select";
 import { useRouter } from "vue-router";
 import { Camera, CameraResultType } from "@capacitor/camera";
-import { httpRequest } from "@/utils/http";
+import { useAuthStore } from "@/stores/auth";
 
 const id_number = ref("");
-const shift = ref("");
 const password = ref("");
+const shift = ref(8);
 const imageBase64 = ref<string | null>(null);
-const isLoading = ref(false);
+
 const router = useRouter();
+const authStore = useAuthStore();
 
 async function handleLogin() {
   try {
-    isLoading.value = true;
+    authStore.isLoading = true;
 
     const photo = await Camera.getPhoto({
       quality: 70,
@@ -57,18 +58,20 @@ async function handleLogin() {
       "selfie.jpg"
     );
 
-    await httpRequest<{ message: string }>({
-      url: "/api/auth/login",
-      method: "POST",
-      data: formData,
-    });
+    const success = await authStore.login(formData);
 
-    router.push("/driver-panel");
+    if (success) {
+      router.push("/driver-panel");
+    } else {
+      alert(
+        authStore.error || "فشل تسجيل الدخول أو السيلفي ما اتاخدتش، حاول تاني."
+      );
+    }
   } catch (err) {
     console.error("Login error:", err);
     alert("فشل تسجيل الدخول أو السيلفي ما اتاخدتش، حاول تاني.");
   } finally {
-    isLoading.value = false;
+    authStore.isLoading = false;
   }
 }
 
@@ -137,8 +140,8 @@ function goToRegister() {
             />
           </div>
 
-          <Button type="submit" class="w-full" :disabled="isLoading">
-            {{ isLoading ? "جاري تسجيل الدخول..." : "تسجيل الدخول" }}
+          <Button type="submit" class="w-full" :disabled="authStore.isLoading">
+            {{ authStore.isLoading ? "جاري تسجيل الدخول..." : "تسجيل الدخول" }}
           </Button>
         </form>
 
