@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 
-import { CapacitorHttp } from "@capacitor/core";
+import { Http as CapacitorHttp } from "@capacitor/http";
 
 const baseUrl = "http://192.168.1.8:3000";
 interface HttpRequestOptions {
