@@ -1,29 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { toast } from "vue-sonner";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useRouter } from "vue-router";
-import { httpRequest } from "@/utils/http";
+import { CapacitorHttp } from "@capacitor/core";
+import {
+  FileTransfer,
+  type UploadFileOptions,
+  type UploadFileResult,
+} from "@capacitor/file-transfer";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 
 const router = useRouter();
+const baseUrl = "http://192.168.1.8:3000";
 
 const cities = ref<{ city_id: number; city_name: string }[]>([]);
 
@@ -38,11 +26,16 @@ const formData = ref({
 });
 
 const fetchCities = async () => {
-  const response = await httpRequest<{ city_id: number; city_name: string }[]>({
-    method: "GET",
-    url: "/api/cities",
-  });
-  cities.value = response;
+  try {
+    const resp = await CapacitorHttp.get({
+      url: `${baseUrl}/api/cities`,
+      webFetchExtra: { credentials: "include" },
+    });
+    cities.value = resp.data;
+  } catch (err: any) {
+    console.error("fetchCities error:", err);
+    toast.error("فشل تحميل المدن");
+  }
 };
 
 const licensePhotoPreview = computed(() => {
@@ -61,29 +54,62 @@ function handleFileUpload(event: Event) {
   }
 }
 
+async function writeFileToUri(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+  const path = `upload-${Date.now()}-${file.name}`;
+
+  const result = await Filesystem.writeFile({
+    path,
+    directory: Directory.Cache,
+    data: base64,
+  });
+  return result.uri;
+}
+
 async function handleRegister() {
   try {
-    const data = new FormData();
-    for (const key in formData.value) {
-      if (key === "license_photo" && formData.value.license_photo) {
-        data.append(key, formData.value.license_photo);
-      } else {
-        data.append(
-          key,
-          formData.value[key as keyof typeof formData.value] as string
-        );
-      }
+    const payload = {
+      full_name: formData.value.full_name,
+      phone: formData.value.phone,
+      city: formData.value.city,
+      type: formData.value.type,
+      id_number: formData.value.id_number,
+      plate_number: formData.value.plate_number,
+    };
+
+    const resp = await CapacitorHttp.post({
+      url: `${baseUrl}/api/driver/register`,
+      data: payload,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (resp.status < 200 || resp.status >= 300) {
+      throw new Error("خطأ في إرسال بيانات التسجيل الأساسية");
     }
 
-    await httpRequest({
-      method: "POST",
-      url: "/api/drivers",
-      data,
-    });
+    if (formData.value.license_photo) {
+      const file = formData.value.license_photo;
+      const fileUri = await writeFileToUri(file);
+
+      const options: any = {
+        url: `${baseUrl}/api/driver/${resp.data.driver_id}/license_photo`,
+        file: fileUri,
+        fileName: file.name,
+        name: "license_photo",
+      };
+
+      const uploadResult: UploadFileResult =
+        await FileTransfer.uploadFile(options);
+
+      console.log("uploadResult", uploadResult);
+    }
+
     toast.success("تم تسجيل حسابك بنجاح!");
     router.push("/driver-panel");
-  } catch (error: any) {
-    toast.error(error.message || "فشل تسجيل الحساب.");
+  } catch (err: any) {
+    console.error("handleRegister error:", err);
+    toast.error(err.message || "فشل تسجيل الحساب.");
   }
 }
 

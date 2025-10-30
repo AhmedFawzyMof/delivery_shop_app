@@ -18,6 +18,8 @@
     "@capacitor/camera": "^7.0.2",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
+    "@capacitor/file-transfer": "^1.0.6",
+    "@capacitor/filesystem": "^7.0.2",
     "@tailwindcss/vite": "^4.1.16",
     "@vueuse/core": "^14.0.0",
     "class-variance-authority": "^0.7.1",
