@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { toast } from "vue-sonner";
 import { useRouter } from "vue-router";
 import { CapacitorHttp } from "@capacitor/core";
@@ -51,13 +51,7 @@ const fetchCities = async () => {
     toast.error("فشل تحميل المدن");
   }
 };
-
-const licensePhotoPreview = computed(() => {
-  if (formData.value.license_photo) {
-    return URL.createObjectURL(formData.value.license_photo);
-  }
-  return null;
-});
+const licensePhotoPreview = ref<string | null>(null);
 
 function handleFileUpload(event: Event) {
   const target = event.target as HTMLInputElement;
@@ -135,6 +129,16 @@ function goToLogin() {
 onMounted(() => {
   fetchCities();
 });
+
+watch(
+  () => formData.value.license_photo,
+  (file) => {
+    if (licensePhotoPreview.value) {
+      URL.revokeObjectURL(licensePhotoPreview.value);
+    }
+    licensePhotoPreview.value = file ? URL.createObjectURL(file) : null;
+  }
+);
 </script>
 
 <template>
