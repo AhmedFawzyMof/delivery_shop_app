@@ -99,6 +99,7 @@ async function handleRegister() {
     });
 
     if (resp.status < 200 || resp.status >= 300) {
+      alert(resp.data);
       throw new Error("خطأ في إرسال بيانات التسجيل الأساسية");
     }
 
