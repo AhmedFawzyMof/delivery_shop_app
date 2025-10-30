@@ -3,12 +3,26 @@ import { ref, computed, onMounted } from "vue";
 import { toast } from "vue-sonner";
 import { useRouter } from "vue-router";
 import { CapacitorHttp } from "@capacitor/core";
+import { FileTransfer, type UploadFileResult } from "@capacitor/file-transfer";
+import { Filesystem, Directory } from "@capacitor/filesystem";
 import {
-  FileTransfer,
-  type UploadFileOptions,
-  type UploadFileResult,
-} from "@capacitor/file-transfer";
-import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectLabel,
+} from "@/components/ui/select";
 
 const router = useRouter();
 const baseUrl = "http://192.168.1.8:3000";
