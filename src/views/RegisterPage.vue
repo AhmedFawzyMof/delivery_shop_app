@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, onMounted, watch } from "vue";
 import { toast } from "vue-sonner";
 import { useRouter } from "vue-router";
 import { CapacitorHttp } from "@capacitor/core";
-import { FileTransfer, type UploadFileResult } from "@capacitor/file-transfer";
-import { Filesystem, Directory } from "@capacitor/filesystem";
 import {
   Card,
   CardContent,
@@ -18,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -37,9 +36,12 @@ const formData = ref({
   id_number: "",
   plate_number: "",
   license_photo: null as File | null,
+  license_photo_base64: "",
 });
 
-const fetchCities = async () => {
+const licensePhotoPreview = ref<string | null>(null);
+
+async function fetchCities() {
   try {
     const resp = await CapacitorHttp.get({
       url: `${baseUrl}/api/cities`,
@@ -50,29 +52,36 @@ const fetchCities = async () => {
     console.error("fetchCities error:", err);
     toast.error("فشل تحميل المدن");
   }
-};
-const licensePhotoPreview = ref<string | null>(null);
-
-function handleFileUpload(event: Event) {
-  const target = event.target as HTMLInputElement;
-  if (target.files && target.files[0]) {
-    formData.value.license_photo = target.files[0];
-  } else {
-    formData.value.license_photo = null;
-  }
 }
 
-async function writeFileToUri(file: File): Promise<string> {
-  const arrayBuffer = await file.arrayBuffer();
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-  const path = `upload-${Date.now()}-${file.name}`;
-
-  const result = await Filesystem.writeFile({
-    path,
-    directory: Directory.Cache,
-    data: base64,
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
   });
-  return result.uri;
+}
+
+async function handleFileUpload(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files && target.files[0]) {
+    const file = target.files[0];
+    formData.value.license_photo = file;
+    licensePhotoPreview.value = URL.createObjectURL(file);
+
+    try {
+      const base64 = await fileToBase64(file);
+      formData.value.license_photo_base64 = base64;
+    } catch (error) {
+      console.error("Base64 conversion error:", error);
+      toast.error("فشل في قراءة الصورة");
+    }
+  } else {
+    formData.value.license_photo = null;
+    formData.value.license_photo_base64 = "";
+    licensePhotoPreview.value = null;
+  }
 }
 
 async function handleRegister() {
@@ -84,6 +93,7 @@ async function handleRegister() {
       type: formData.value.type,
       id_number: formData.value.id_number,
       plate_number: formData.value.plate_number,
+      license_photo: formData.value.license_photo_base64,
     };
 
     const resp = await CapacitorHttp.post({
@@ -93,25 +103,7 @@ async function handleRegister() {
     });
 
     if (resp.status < 200 || resp.status >= 300) {
-      alert(resp.data);
-      throw new Error("خطأ في إرسال بيانات التسجيل الأساسية");
-    }
-
-    if (formData.value.license_photo) {
-      const file = formData.value.license_photo;
-      const fileUri = await writeFileToUri(file);
-
-      const options: any = {
-        url: `${baseUrl}/api/driver/${resp.data.driver_id}/license_photo`,
-        file: fileUri,
-        fileName: file.name,
-        name: "license_photo",
-      };
-
-      const uploadResult: UploadFileResult =
-        await FileTransfer.uploadFile(options);
-
-      console.log("uploadResult", uploadResult);
+      throw new Error("خطأ في إرسال بيانات التسجيل");
     }
 
     toast.success("تم تسجيل حسابك بنجاح!");
@@ -132,11 +124,10 @@ onMounted(() => {
 
 watch(
   () => formData.value.license_photo,
-  (file) => {
-    if (licensePhotoPreview.value) {
+  (file, oldFile) => {
+    if (licensePhotoPreview.value && oldFile) {
       URL.revokeObjectURL(licensePhotoPreview.value);
     }
-    licensePhotoPreview.value = file ? URL.createObjectURL(file) : null;
   }
 );
 </script>
