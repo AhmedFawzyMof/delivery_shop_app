@@ -5,7 +5,7 @@ import "vue-sonner/style.css";
 </script>
 
 <template>
-  <Toaster />
+  <Toaster :rich-colors="true" />
   <RouterView />
 </template>
 

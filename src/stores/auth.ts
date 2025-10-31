@@ -21,22 +21,28 @@ interface Driver {
 export const useAuthStore = defineStore("auth", () => {
   const driver = ref<Driver | null>(null);
   const isAuthenticated = ref(false);
+  const user = ref<any>(null);
+  const type = ref("");
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
-  async function login(formData: FormData) {
+  async function login(credentials: Record<string, any>) {
     isLoading.value = true;
     error.value = null;
     try {
       const response = await httpRequest<{ driver: Driver }>({
         url: "/api/auth/driver/login",
         method: "POST",
-        data: formData,
+        data: credentials,
       });
+      if (!response || !response.driver)
+        throw new Error("Invalid server response");
       driver.value = response.driver;
+      type.value = "driver";
       isAuthenticated.value = true;
       return true;
     } catch (err: any) {
+      console.error("Login error:", err);
       error.value = err.message || "Login failed";
       isAuthenticated.value = false;
       return false;
@@ -45,17 +51,33 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
+  async function restaurantlogin(name: string, password: string) {
+    const response = await httpRequest<{ user: any }>({
+      url: "/api/auth/restaurant/login",
+      method: "POST",
+      data: {
+        restaurant_name: name,
+        password,
+      },
+    });
+
+    user.value = response.user;
+    type.value = "restaurant";
+    isAuthenticated.value = true;
+  }
+
   async function checkSession() {
     isLoading.value = true;
     error.value = null;
     try {
       const response = await httpRequest<{
-        user: { id: number; type: string };
+        user: { id: number; type: string; shiftDuration: number };
       }>({
         url: "/api/auth/driver",
         method: "GET",
       });
-      isAuthenticated.value = !!response.user.id;
+      isAuthenticated.value = !!response?.user?.id;
+      type.value = "driver";
       return true;
     } catch (err: any) {
       isAuthenticated.value = false;
@@ -63,6 +85,19 @@ export const useAuthStore = defineStore("auth", () => {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  async function checkRestaurantSession() {
+    isLoading.value = true;
+    error.value = null;
+
+    const response = await httpRequest<{ user: any }>({
+      url: "/api/auth/restaurant",
+      method: "GET",
+    });
+
+    isAuthenticated.value = !!response?.user?.id;
+    type.value = "restaurant";
   }
 
   async function logout() {
@@ -86,9 +121,13 @@ export const useAuthStore = defineStore("auth", () => {
 
   return {
     driver,
+    user,
     isAuthenticated,
     isLoading,
+    type,
     error,
+    restaurantlogin,
+    checkRestaurantSession,
     login,
     logout,
     checkSession,

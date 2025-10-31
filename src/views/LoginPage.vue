@@ -46,19 +46,17 @@ async function handleLogin() {
       throw new Error("الصورة ما اتاخدتش.");
     }
 
+    // Prepare Base64 data URI
     imageBase64.value = `data:image/jpeg;base64,${photo.base64String}`;
 
-    const formData = new FormData();
-    formData.append("id_number", id_number.value);
-    formData.append("password", password.value);
-    formData.append("shift", shift.value.toString());
-    formData.append(
-      "selfie",
-      base64ToBlob(photo.base64String as string),
-      "selfie.jpg"
-    );
+    const payload = {
+      id_number: id_number.value,
+      password: password.value,
+      shift: shift.value,
+      selfie: imageBase64.value,
+    };
 
-    const success = await authStore.login(formData);
+    const success = await authStore.login(payload);
 
     if (success) {
       router.push("/driver-panel");
@@ -73,16 +71,6 @@ async function handleLogin() {
   } finally {
     authStore.isLoading = false;
   }
-}
-
-function base64ToBlob(base64Data: string) {
-  const byteCharacters = atob(base64Data);
-  const byteNumbers = new Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
-  const byteArray = new Uint8Array(byteNumbers);
-  return new Blob([byteArray], { type: "image/jpeg" });
 }
 
 function goToRegister() {

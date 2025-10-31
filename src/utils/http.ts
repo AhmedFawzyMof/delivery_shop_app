@@ -29,6 +29,7 @@ async function fetchAndroidRequest<T>(options: HttpRequestOptions) {
   const fetchOptions: RequestInit = {
     method,
     headers: {
+      "Content-Type": "application/json",
       ...headers,
     },
     credentials: "include",

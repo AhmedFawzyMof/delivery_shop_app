@@ -22,9 +22,11 @@ import {
   SelectValue,
   SelectLabel,
 } from "@/components/ui/select";
+import { Loader } from "lucide-vue-next";
 
 const router = useRouter();
 const baseUrl = "http://192.168.1.8:3000";
+const loading = ref(false);
 
 const cities = ref<{ city_id: number; city_name: string }[]>([]);
 
@@ -85,6 +87,7 @@ async function handleFileUpload(event: Event) {
 }
 
 async function handleRegister() {
+  loading.value = true;
   try {
     const payload = {
       full_name: formData.value.full_name,
@@ -107,10 +110,12 @@ async function handleRegister() {
     }
 
     toast.success("تم تسجيل حسابك بنجاح!");
-    router.push("/driver-panel");
+    router.push("/");
   } catch (err: any) {
     console.error("handleRegister error:", err);
     toast.error(err.message || "فشل تسجيل الحساب.");
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -237,13 +242,16 @@ watch(
             </div>
           </div>
 
-          <Button type="submit" class="w-full">تسجيل</Button>
+          <Button type="submit" class="w-full" :disabled="loading">
+            <Loader v-if="loading" class="w-4 h-4 animate-spin" />
+            <span v-else="loading"> تسجيل </span>
+          </Button>
         </form>
         <div class="mt-4 text-center text-sm">
           عندك حساب قبل كده؟
-          <Button variant="link" @click="goToLogin" class="p-0 h-auto"
-            >سجل دخول</Button
-          >
+          <Button variant="link" @click="goToLogin" class="p-0 h-auto">
+            سجل دخول
+          </Button>
         </div>
       </CardContent>
     </Card>
