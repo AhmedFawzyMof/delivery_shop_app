@@ -119,7 +119,7 @@ async function handleRegister() {
 }
 
 function goToLogin() {
-  router.push("/login");
+  router.push("/restaurant");
 }
 
 onMounted(() => {
