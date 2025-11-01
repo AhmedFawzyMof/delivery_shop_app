@@ -35,6 +35,7 @@ export const useAuthStore = defineStore("auth", () => {
         method: "POST",
         data: credentials,
       });
+      alert(response);
       if (!response || !response.driver)
         throw new Error("Invalid server response");
       driver.value = response.driver;

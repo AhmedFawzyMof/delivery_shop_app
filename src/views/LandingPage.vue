@@ -69,12 +69,11 @@ function goToHash(uri: string) {
         </div>
 
         <div class="relative md:w-1/2 flex justify-center">
-          <div class="cover absolute bottom-0 z-50 bg-white h-15 w-full"></div>
-          <div class="h-[80vh] w-full">
-            <spline-viewer
-              url="https://prod.spline.design/9-7PxqIssTcH3iFp/scene.splinecode"
-            ></spline-viewer>
-          </div>
+          <img
+            src="/landing.png"
+            alt="Delivery Shop Hero Image"
+            class="max-w-full h-auto"
+          />
         </div>
       </div>
     </section>
