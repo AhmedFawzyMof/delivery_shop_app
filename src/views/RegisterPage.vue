@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from "vue";
 import { toast } from "vue-sonner";
 import { useRouter } from "vue-router";
 import { CapacitorHttp } from "@capacitor/core";
+import { useAuthStore } from "@/stores/auth";
 import {
   Card,
   CardContent,
@@ -25,6 +26,7 @@ import {
 import { Loader } from "lucide-vue-next";
 
 const router = useRouter();
+const authStore = useAuthStore();
 const baseUrl = "http://192.168.1.8:3000";
 const loading = ref(false);
 
@@ -123,7 +125,16 @@ function goToLogin() {
   router.push("/login");
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await authStore.checkSession();
+  await authStore.checkRestaurantSession();
+  if (authStore.isAuthenticated) {
+    if (authStore.type === "driver") {
+      router.push("/driver-panel");
+    } else if (authStore.type === "restaurant") {
+      router.push("/restaurant/dashboard");
+    }
+  }
   fetchCities();
 });
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -29,6 +29,18 @@ const imageBase64 = ref<string | null>(null);
 
 const router = useRouter();
 const authStore = useAuthStore();
+
+onMounted(async () => {
+  await authStore.checkSession();
+  await authStore.checkRestaurantSession();
+  if (authStore.isAuthenticated) {
+    if (authStore.type === "driver") {
+      router.push("/driver-panel");
+    } else if (authStore.type === "restaurant") {
+      router.push("/restaurant/dashboard");
+    }
+  }
+});
 
 async function handleLogin() {
   try {

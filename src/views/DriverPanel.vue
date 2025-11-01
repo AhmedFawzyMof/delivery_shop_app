@@ -1,10 +1,87 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ForegroundService } from "@awesome-cordova-plugins/foreground-service";
+import { LocalNotifications } from "@capacitor/local-notifications";
+import {
+  Check,
+  XCircle,
+  Smartphone,
+  SmartphoneCharging,
+} from "lucide-vue-next";
 
-const isOnline = ref(true);
+const isOnline = ref(false);
+let ws: WebSocket | null = null;
+
+function toggleOnline(value: boolean) {
+  console.log("Toggle clicked:", value);
+  isOnline.value = value;
+}
+
+async function startListeningForOrders() {
+  await LocalNotifications.requestPermissions();
+
+  await ForegroundService.start(
+    "Delivery Shop",
+    "الاستماع للطلبات الجديدة...",
+    "ic_launcher"
+  );
+
+  ws = new WebSocket("ws://192.168.1.8:3000");
+
+  ws.onopen = () => console.log("WebSocket connected");
+
+  ws.onmessage = async (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.type === "new_order") {
+      console.log("New order received:", data);
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: Date.now(),
+            title: "🛵 New Order",
+            body: `Order #${data.order_id} just arrived!`,
+          },
+        ],
+      });
+    }
+  };
+
+  ws.onclose = () => {
+    console.log("WebSocket closed, retrying...");
+    setTimeout(startListeningForOrders, 5000);
+  };
+}
+
+async function stopListeningForOrders() {
+  await ForegroundService.stop();
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+}
+
+watch(isOnline, async (newValue) => {
+  if (newValue) {
+    console.log("Going online...");
+    await startListeningForOrders();
+  } else {
+    console.log("Going offline...");
+    await stopListeningForOrders();
+  }
+});
+
+onMounted(() => {
+  if (isOnline.value) startListeningForOrders();
+});
+
+onBeforeUnmount(() => {
+  stopListeningForOrders();
+});
 </script>
 
 <template>
@@ -14,21 +91,8 @@ const isOnline = ref(true);
       class="flex items-center justify-between bg-white p-4 rounded-lg shadow mb-4"
     >
       <div class="flex items-center space-x-3">
-        <div class="bg-orange-500 p-2 rounded-full">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6 text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 17l-4-4m0 0l4-4m-4 4h12a2 2 0 012 2v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4a2 2 0 012-2z"
-            />
-          </svg>
+        <div class="p-2 rounded-full">
+          <img src="/logo.webp" alt="Delivery Shop Logo" class="h-12 w-12" />
         </div>
         <div>
           <h1 class="text-lg font-semibold">Ahmed Ali</h1>
@@ -37,36 +101,19 @@ const isOnline = ref(true);
       </div>
       <div class="flex items-center space-x-4">
         <div class="flex items-center space-x-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 text-green-500"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-              clip-rule="evenodd"
-            />
-          </svg>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-            />
-          </svg>
+          <Check v-if="isOnline" class="h-5 w-5 text-green-500" />
+          <XCircle class="h-5 w-5 text-red-500" />
+          <SmartphoneCharging v-if="isOnline" class="h-5 w-5 text-green-500" />
+          <Smartphone v-else class="h-5 w-5 text-gray-500" />
         </div>
+
         <div class="flex items-center space-x-2">
           <Label for="online-mode">Online</Label>
-          <Switch id="online-mode" v-model:checked="isOnline" />
+          <Switch
+            id="online-mode"
+            :checked="isOnline"
+            @update:checked="toggleOnline"
+          />
         </div>
         <div
           class="bg-gray-200 h-8 w-8 flex items-center justify-center rounded-full text-gray-700 font-semibold"
@@ -105,7 +152,6 @@ const isOnline = ref(true);
         </CardContent>
       </Card>
 
-      <!-- Deliveries Card -->
       <Card class="shadow-md">
         <CardHeader
           class="flex flex-row items-center justify-between space-y-0 pb-2"

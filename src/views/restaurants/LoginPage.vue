@@ -22,10 +22,15 @@ const error = ref("");
 const auth = useAuthStore();
 const router = useRouter();
 
-onMounted(() => {
-  auth.checkRestaurantSession();
+onMounted(async () => {
+  await auth.checkRestaurantSession();
+  await auth.checkSession();
   if (auth.isAuthenticated) {
-    router.push("/restaurant/dashboard");
+    if (auth.type === "driver") {
+      router.push("/driver-panel");
+    } else if (auth.type === "restaurant") {
+      router.push("/restaurant/dashboard");
+    }
   }
 });
 

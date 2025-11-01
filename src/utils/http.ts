@@ -19,7 +19,6 @@ export async function httpRequest<T>(options: HttpRequestOptions): Promise<T> {
     return fetchAndroidRequest<T>(options);
   }
 
-  alert("Unsupported platform");
   throw new Error("Unsupported platform");
 }
 
@@ -53,7 +52,6 @@ async function fetchAndroidRequest<T>(options: HttpRequestOptions) {
 
     return (await response.data) as T;
   } catch (error) {
-    alert((error as Error).message);
     console.error("Fetch request failed:", error);
     throw error;
   }
@@ -93,7 +91,6 @@ async function fetchWebRequest<T>(options: HttpRequestOptions): Promise<T> {
 
     return (await response.json()) as T;
   } catch (error) {
-    alert("Unsupported platform");
     console.error("Fetch request failed:", error);
     throw error;
   }
