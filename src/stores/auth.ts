@@ -29,6 +29,7 @@ export const useAuthStore = defineStore("auth", () => {
   async function login(credentials: Record<string, any>) {
     isLoading.value = true;
     error.value = null;
+    alert(JSON.stringify(credentials));
     try {
       const response = await httpRequest<{ driver: Driver }>({
         url: "/api/auth/driver/login",
