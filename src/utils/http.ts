@@ -25,34 +25,24 @@ export async function httpRequest<T>(options: HttpRequestOptions): Promise<T> {
 async function fetchAndroidRequest<T>(options: HttpRequestOptions) {
   const { url, method = "GET", headers = {}, data } = options;
 
-  const fetchOptions: RequestInit = {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-    credentials: "include",
-  };
-
-  if (data && (method === "POST" || method === "PUT")) {
-    if (data instanceof FormData) {
-      fetchOptions.body = data;
-    } else {
-      fetchOptions.body = JSON.stringify(data);
-    }
-  }
-
   try {
     const response = await CapacitorHttp.request({
-      method: method,
+      method,
       url: baseUrl + url,
-      headers: headers,
-      data: fetchOptions.body,
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      data,
     });
 
-    return (await response.data) as T;
+    if (!response || !response.data) {
+      throw new Error("No response data received");
+    }
+
+    return response.data as T;
   } catch (error) {
-    console.error("Fetch request failed:", error);
+    console.error("Capacitor HTTP error:", error);
     throw error;
   }
 }
