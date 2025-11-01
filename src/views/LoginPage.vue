@@ -18,6 +18,7 @@ import {
   SelectValue,
   SelectLabel,
 } from "@/components/ui/select";
+import { Loader } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import { Camera, CameraResultType } from "@capacitor/camera";
 import { useAuthStore } from "@/stores/auth";
@@ -26,6 +27,7 @@ const id_number = ref("");
 const password = ref("");
 const shift = ref(8);
 const imageBase64 = ref<string | null>(null);
+const loading = ref(false);
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -33,6 +35,7 @@ const authStore = useAuthStore();
 onMounted(async () => {
   await authStore.checkSession();
   await authStore.checkRestaurantSession();
+
   if (authStore.isAuthenticated) {
     if (authStore.type === "driver") {
       router.push("/driver-panel");
@@ -44,7 +47,7 @@ onMounted(async () => {
 
 async function handleLogin() {
   try {
-    authStore.isLoading = true;
+    loading.value = true;
 
     const photo = await Camera.getPhoto({
       quality: 70,
@@ -55,10 +58,10 @@ async function handleLogin() {
     });
 
     if (!photo.base64String) {
-      throw new Error("الصورة ما اتاخدتش.");
+      alert("لازم تاخد سيلفي علشان تسجل الدخول.");
+      return;
     }
 
-    // Prepare Base64 data URI
     imageBase64.value = `data:image/jpeg;base64,${photo.base64String}`;
 
     const payload = {
@@ -73,15 +76,13 @@ async function handleLogin() {
     if (success) {
       router.push("/driver-panel");
     } else {
-      alert(
-        authStore.error || "فشل تسجيل الدخول أو السيلفي ما اتاخدتش، حاول تاني."
-      );
+      alert(authStore.error || "فشل تسجيل الدخول. تأكد من البيانات والسيلفي.");
     }
   } catch (err) {
     console.error("Login error:", err);
-    alert("فشل تسجيل الدخول أو السيلفي ما اتاخدتش، حاول تاني.");
+    alert("حصل خطأ أثناء تسجيل الدخول، حاول تاني.");
   } finally {
-    authStore.isLoading = false;
+    loading.value = false;
   }
 }
 
@@ -140,8 +141,9 @@ function goToRegister() {
             />
           </div>
 
-          <Button type="submit" class="w-full" :disabled="authStore.isLoading">
-            {{ authStore.isLoading ? "جاري تسجيل الدخول..." : "تسجيل الدخول" }}
+          <Button type="submit" class="w-full" :disabled="loading">
+            <Loader v-if="loading" class="w-4 h-4 animate-spin" />
+            <span>تسجيل الدخول</span>
           </Button>
         </form>
 
