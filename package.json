@@ -17,6 +17,7 @@
     "@awesome-cordova-plugins/core": "8.1.0",
     "@awesome-cordova-plugins/foreground-service": "^8.1.0",
     "@capacitor/android": "7.4.4",
+    "@capacitor/app": "^7.0.2",
     "@capacitor/camera": "^7.0.2",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
