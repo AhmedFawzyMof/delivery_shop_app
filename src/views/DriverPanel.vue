@@ -1,64 +1,79 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from "vue";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { ForegroundService } from "@awesome-cordova-plugins/foreground-service";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import {
-  Check,
-  XCircle,
-  Smartphone,
-  SmartphoneCharging,
-} from "lucide-vue-next";
 
 const isOnline = ref(false);
 let ws: WebSocket | null = null;
 
-function toggleOnline(value: boolean) {
-  console.log("Toggle clicked:", value);
+async function toggleOnline(value: boolean) {
   isOnline.value = value;
 }
 
+async function ensureForegroundServiceReady() {
+  if (!window.cordova) {
+    alert(
+      "⚠️ Cordova not available — running in browser or Capacitor-only mode"
+    );
+    return false;
+  }
+
+  try {
+    await ForegroundService.start(
+      "Delivery Shop",
+      "الاستماع للطلبات الجديدة...",
+      "ic_launcher"
+    );
+    console.log("✅ Foreground service started");
+    return true;
+  } catch (err) {
+    console.error("❌ ForegroundService error:", err);
+    return false;
+  }
+}
+
 async function startListeningForOrders() {
+  const ready = await ensureForegroundServiceReady();
+  if (!ready) return;
+
   await LocalNotifications.requestPermissions();
 
-  await ForegroundService.start(
-    "Delivery Shop",
-    "الاستماع للطلبات الجديدة...",
-    "ic_launcher"
-  );
-
   ws = new WebSocket("ws://192.168.1.8:3000");
-
-  ws.onopen = () => console.log("WebSocket connected");
-
-  ws.onmessage = async (event) => {
-    const data = JSON.parse(event.data);
-
-    if (data.type === "new_order") {
-      console.log("New order received:", data);
-
-      await LocalNotifications.schedule({
-        notifications: [
-          {
-            id: Date.now(),
-            title: "🛵 New Order",
-            body: `Order #${data.order_id} just arrived!`,
-          },
-        ],
-      });
-    }
+  ws.onopen = () => console.log("✅ WebSocket connected");
+  ws.onclose = () => {
+    console.log("❌ WebSocket closed, retrying...");
+    setTimeout(startListeningForOrders, 5000);
   };
 
-  ws.onclose = () => {
-    console.log("WebSocket closed, retrying...");
-    setTimeout(startListeningForOrders, 5000);
+  ws.onmessage = async (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === "new_order") {
+        console.log("📦 New order received:", data);
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id: Date.now(),
+              title: "🛵 New Order",
+              body: `Order #${data.order_id} just arrived!`,
+            },
+          ],
+        });
+      }
+    } catch (err) {
+      console.error("Error parsing message:", err);
+    }
   };
 }
 
 async function stopListeningForOrders() {
-  await ForegroundService.stop();
+  try {
+    await ForegroundService.stop();
+    console.log("🛑 Foreground service stopped");
+  } catch {
+    console.warn("Foreground service not running");
+  }
+
   if (ws) {
     ws.close();
     ws = null;
@@ -67,16 +82,16 @@ async function stopListeningForOrders() {
 
 watch(isOnline, async (newValue) => {
   if (newValue) {
-    console.log("Going online...");
+    console.log("🌐 Going online...");
     await startListeningForOrders();
   } else {
-    console.log("Going offline...");
+    console.log("🔌 Going offline...");
     await stopListeningForOrders();
   }
 });
 
 onMounted(() => {
-  if (isOnline.value) startListeningForOrders();
+  console.log("📱 Page mounted");
 });
 
 onBeforeUnmount(() => {

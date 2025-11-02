@@ -29,14 +29,12 @@ export const useAuthStore = defineStore("auth", () => {
   async function login(credentials: Record<string, any>) {
     isLoading.value = true;
     error.value = null;
-    alert(JSON.stringify(credentials));
     try {
       const response = await httpRequest<{ driver: Driver }>({
         url: "/api/auth/driver/login",
         method: "POST",
         data: credentials,
       });
-      alert(JSON.stringify(response));
       if (!response || !response.driver)
         throw new Error("Invalid server response");
       driver.value = response.driver;
