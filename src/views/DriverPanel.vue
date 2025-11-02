@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from "vue";
-import { ForegroundService } from "@awesome-cordova-plugins/foreground-service";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { ForegroundService } from "@capawesome-team/capacitor-android-foreground-service";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -22,19 +22,22 @@ async function toggleOnline(value: boolean) {
 }
 
 async function ensureForegroundServiceReady() {
-  if (!window.cordova) {
-    alert(
-      "⚠️ Cordova not available — running in browser or Capacitor-only mode"
-    );
-    return false;
-  }
-
   try {
-    await ForegroundService.start(
-      "Delivery Shop",
-      "الاستماع للطلبات الجديدة...",
-      "ic_launcher"
-    );
+    await ForegroundService.createNotificationChannel({
+      id: "delivery_service",
+      name: "Delivery Service",
+      description: "Keeps the app running to listen for new orders",
+      importance: 3, // IMPORTANCE_DEFAULT
+    });
+
+    await ForegroundService.startForegroundService({
+      id: 1,
+      title: "Delivery Shop",
+
+      body: "الاستماع للطلبات الجديدة...",
+      smallIcon: "ic_launcher",
+    });
+
     console.log("✅ Foreground service started");
     return true;
   } catch (err) {
@@ -65,8 +68,8 @@ async function startListeningForOrders() {
           notifications: [
             {
               id: Date.now(),
-              title: "🛵 New Order",
-              body: `Order #${data.order_id} just arrived!`,
+              title: "🛵 طلب جديد",
+              body: `تم وصول طلب جديد رقم #${data.order_id}`,
             },
           ],
         });
@@ -79,10 +82,10 @@ async function startListeningForOrders() {
 
 async function stopListeningForOrders() {
   try {
-    await ForegroundService.stop();
+    await ForegroundService.stopForegroundService();
     console.log("🛑 Foreground service stopped");
-  } catch {
-    console.warn("Foreground service not running");
+  } catch (err) {
+    console.warn("Foreground service not running", err);
   }
 
   if (ws) {
