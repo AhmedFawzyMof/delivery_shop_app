@@ -2,8 +2,19 @@
 import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { ForegroundService } from "@awesome-cordova-plugins/foreground-service";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Check,
+  XCircle,
+  SmartphoneCharging,
+  Smartphone,
+} from "lucide-vue-next";
+import { useAuthStore } from "@/stores/auth";
 
 const isOnline = ref(false);
+const authStore = useAuthStore();
 let ws: WebSocket | null = null;
 
 async function toggleOnline(value: boolean) {
@@ -100,8 +111,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-100 p-4">
-    <!-- Header -->
+  <div class="min-h-screen bg-gray-100">
     <div
       class="flex items-center justify-between bg-white p-4 rounded-lg shadow mb-4"
     >
@@ -110,8 +120,9 @@ onBeforeUnmount(() => {
           <img src="/logo.webp" alt="Delivery Shop Logo" class="h-12 w-12" />
         </div>
         <div>
-          <h1 class="text-lg font-semibold">Ahmed Ali</h1>
-          <p class="text-sm text-gray-500">Driver Panel</p>
+          <h1 class="text-lg font-semibold">
+            {{ authStore.driver?.driver_full_name.split(" ")[0] }}
+          </h1>
         </div>
       </div>
       <div class="flex items-center space-x-4">
@@ -123,7 +134,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="flex items-center space-x-2">
-          <Label for="online-mode">Online</Label>
+          <Label for="online-mode">{{ isOnline ? "Online" : "Offline" }}</Label>
           <Switch
             id="online-mode"
             :checked="isOnline"
@@ -138,9 +149,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- Main Content -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <!-- Today's Earnings Card -->
       <Card class="shadow-md">
         <CardHeader
           class="flex flex-row items-center justify-between space-y-0 pb-2"
@@ -270,7 +279,3 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Add any specific styles here if needed */
-</style>
