@@ -1,284 +1,525 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { ForegroundService } from "@capawesome-team/capacitor-android-foreground-service";
+import { App } from "@capacitor/app";
+import { useAuthStore } from "@/stores/auth";
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Check,
-  XCircle,
-  SmartphoneCharging,
-  Smartphone,
-} from "lucide-vue-next";
-import { useAuthStore } from "@/stores/auth";
+import { Badge } from "@/components/ui/badge";
+import { Check, XCircle, Wifi, WifiOff, Bell, BellOff } from "lucide-vue-next";
 
-const isOnline = ref(false);
 const authStore = useAuthStore();
+const isOnline = ref(false);
+const isConnected = ref(false);
+const connectionStatus = ref<string>("غير متصل");
+const lastMessageTime = ref<string>("");
+const receivedOrdersCount = ref(0);
+const WEBSOCKET_URL = "ws://192.168.1.8:3000";
+const RECONNECT_INTERVAL = 5000;
+const MAX_RECONNECT_ATTEMPTS = 999;
+const HEARTBEAT_INTERVAL = 30000;
+
 let ws: WebSocket | null = null;
+let reconnectAttempts = 0;
+let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+let missedHeartbeats = 0;
+const MAX_MISSED_HEARTBEATS = 3;
 
-async function toggleOnline(value: boolean) {
-  isOnline.value = value;
-}
-
-async function ensureForegroundServiceReady() {
+function enableBackgroundMode() {
   try {
-    await ForegroundService.createNotificationChannel({
-      id: "delivery_service",
-      name: "Delivery Service",
-      description: "Keeps the app running to listen for new orders",
-      importance: 3, // IMPORTANCE_DEFAULT
-    });
+    const backgroundMode = (window as any).cordova?.plugins?.backgroundMode;
 
-    await ForegroundService.startForegroundService({
-      id: 1,
+    if (!backgroundMode) {
+      console.warn("⚠️ Background mode plugin not available");
+      showNotification("خطأ", "خاصية العمل في الخلفية غير متوفرة", "danger");
+      return false;
+    }
+
+    backgroundMode.setDefaults({
       title: "Delivery Shop",
-
-      body: "الاستماع للطلبات الجديدة...",
-      smallIcon: "ic_launcher",
+      text: "متصل - في انتظار الطلبات الجديدة",
+      icon: "icon",
+      color: "#10B981",
+      resume: true,
+      hidden: false,
+      bigText: false,
+      silent: true,
     });
 
-    console.log("✅ Foreground service started");
+    backgroundMode.enable();
+
+    backgroundMode.disableBatteryOptimizations();
+
+    backgroundMode.disableWebViewOptimizations();
+
+    backgroundMode.setEnabled(true);
+
+    console.log("✅ Background mode enabled");
     return true;
   } catch (err) {
-    console.error("❌ ForegroundService error:", err);
+    console.error("❌ Error enabling background mode:", err);
     return false;
   }
 }
 
-async function startListeningForOrders() {
-  const ready = await ensureForegroundServiceReady();
-  if (!ready) return;
-
-  await LocalNotifications.requestPermissions();
-
-  ws = new WebSocket("ws://192.168.1.8:3000");
-  ws.onopen = () => console.log("✅ WebSocket connected");
-  ws.onclose = () => {
-    console.log("❌ WebSocket closed, retrying...");
-    setTimeout(startListeningForOrders, 5000);
-  };
-
-  ws.onmessage = async (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      if (data.type === "new_order") {
-        console.log("📦 New order received:", data);
-        await LocalNotifications.schedule({
-          notifications: [
-            {
-              id: Date.now(),
-              title: "🛵 طلب جديد",
-              body: `تم وصول طلب جديد رقم #${data.order_id}`,
-            },
-          ],
-        });
-      }
-    } catch (err) {
-      console.error("Error parsing message:", err);
-    }
-  };
-}
-
-async function stopListeningForOrders() {
+function disableBackgroundMode() {
   try {
-    await ForegroundService.stopForegroundService();
-    console.log("🛑 Foreground service stopped");
+    const backgroundMode = (window as any).cordova?.plugins?.backgroundMode;
+    if (backgroundMode) {
+      backgroundMode.disable();
+      console.log("🛑 Background mode disabled");
+    }
   } catch (err) {
-    console.warn("Foreground service not running", err);
-  }
-
-  if (ws) {
-    ws.close();
-    ws = null;
+    console.error("❌ Error disabling background mode:", err);
   }
 }
+
+function updateBackgroundNotification(status: string) {
+  try {
+    const backgroundMode = (window as any).cordova?.plugins?.backgroundMode;
+    if (backgroundMode && backgroundMode.isEnabled()) {
+      backgroundMode.configure({
+        text: status,
+      });
+    }
+  } catch (err) {
+    console.error("Failed to update background notification:", err);
+  }
+}
+
+async function showNotification(
+  title: string,
+  message: string,
+  type: "success" | "warning" | "danger" = "warning"
+) {
+  console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
+
+  try {
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: Date.now(),
+          title: title,
+          body: message,
+          sound: type === "danger" ? "default" : undefined,
+        },
+      ],
+    });
+  } catch (err) {
+    console.warn("Failed to show notification:", err);
+  }
+}
+
+function startHeartbeat() {
+  stopHeartbeat();
+
+  heartbeatInterval = setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(
+          JSON.stringify({
+            type: "ping",
+            timestamp: Date.now(),
+            userId: authStore.user?.id,
+          })
+        );
+
+        missedHeartbeats++;
+
+        if (missedHeartbeats >= MAX_MISSED_HEARTBEATS) {
+          console.warn("⚠️ Too many missed heartbeats, reconnecting...");
+          connectionStatus.value = "إعادة الاتصال...";
+          ws.close();
+          missedHeartbeats = 0;
+        }
+      } catch (err) {
+        console.error("❌ Error sending heartbeat:", err);
+      }
+    }
+  }, HEARTBEAT_INTERVAL);
+}
+
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+  missedHeartbeats = 0;
+}
+
+function connectWebSocket() {
+  if (
+    ws &&
+    (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)
+  ) {
+    console.log("WebSocket already connected or connecting");
+    return;
+  }
+
+  if (!isOnline.value) {
+    console.log("User is offline, skipping connection");
+    return;
+  }
+
+  reconnectAttempts++;
+  connectionStatus.value = `جاري الاتصال... (محاولة ${reconnectAttempts})`;
+  console.log(`🔄 Connecting to WebSocket (Attempt ${reconnectAttempts})...`);
+
+  try {
+    ws = new WebSocket(WEBSOCKET_URL);
+
+    ws.onopen = () => {
+      console.log("✅ WebSocket connected");
+      isConnected.value = true;
+      connectionStatus.value = "متصل ✓";
+      reconnectAttempts = 0;
+      missedHeartbeats = 0;
+
+      updateBackgroundNotification("متصل - في انتظار الطلبات");
+      showNotification("نجح الاتصال", "تم الاتصال بالخادم بنجاح", "success");
+
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+
+      startHeartbeat();
+
+      if (authStore.user?.id) {
+        ws?.send(
+          JSON.stringify({
+            type: "auth",
+            userId: authStore.user.id,
+            timestamp: Date.now(),
+          })
+        );
+      }
+    };
+
+    ws.onclose = (event) => {
+      console.log(
+        `❌ WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`
+      );
+      isConnected.value = false;
+      connectionStatus.value = "منقطع الاتصال";
+      stopHeartbeat();
+
+      const intentionalClose = event.code === 1000 || !isOnline.value;
+
+      if (isOnline.value && !intentionalClose && !reconnectTimeout) {
+        const delay = Math.min(RECONNECT_INTERVAL * reconnectAttempts, 30000);
+        connectionStatus.value = `إعادة الاتصال بعد ${delay / 1000} ثانية...`;
+        updateBackgroundNotification(`إعادة الاتصال...`);
+
+        reconnectTimeout = setTimeout(() => {
+          connectWebSocket();
+        }, delay);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error("❌ WebSocket error:", error);
+      connectionStatus.value = "خطأ في الاتصال";
+      stopHeartbeat();
+    };
+
+    ws.onmessage = async (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        lastMessageTime.value = new Date().toLocaleTimeString("ar-EG");
+
+        console.log("📨 Message received:", data);
+
+        if (data.type === "pong") {
+          missedHeartbeats = 0;
+          return;
+        }
+
+        if (data.type === "new_order") {
+          receivedOrdersCount.value++;
+
+          console.log("🛵 New order received:", data);
+
+          if (navigator.vibrate) {
+            navigator.vibrate([300, 100, 300, 100, 300]);
+          }
+
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                id: Date.now(),
+                title: "🛵 طلب جديد!",
+                body: `طلب رقم #${data.order_id || "N/A"}`,
+                largeBody: data.customer_name
+                  ? `العميل: ${data.customer_name}\nالعنوان: ${data.address || "غير محدد"}`
+                  : "انقر لعرض التفاصيل",
+                summaryText: "طلب توصيل جديد",
+                sound: "default",
+                channelId: "delivery_orders",
+                extra: {
+                  orderId: data.order_id,
+                  orderData: JSON.stringify(data),
+                },
+              },
+            ],
+          });
+
+          updateBackgroundNotification(`طلب جديد #${data.order_id}`);
+
+          setTimeout(() => {
+            updateBackgroundNotification("متصل - في انتظار الطلبات");
+          }, 10000);
+        }
+
+        if (data.type === "order_update") {
+          console.log("📝 Order update:", data);
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                id: Date.now(),
+                title: "تحديث الطلب",
+                body: `تم تحديث حالة الطلب #${data.order_id}`,
+                sound: undefined,
+                channelId: "delivery_orders",
+              },
+            ],
+          });
+        }
+      } catch (err) {
+        console.error("❌ Error parsing message:", err);
+      }
+    };
+  } catch (err) {
+    console.error("❌ Failed to create WebSocket:", err);
+    connectionStatus.value = "فشل الاتصال";
+  }
+}
+
+async function startListening() {
+  try {
+    const permResult = await LocalNotifications.requestPermissions();
+    if (permResult.display !== "granted") {
+      showNotification("تحذير", "يجب منح إذن الإشعارات للتطبيق", "warning");
+      isOnline.value = false;
+      return;
+    }
+
+    try {
+      await LocalNotifications.createChannel({
+        id: "delivery_orders",
+        name: "طلبات التوصيل",
+        description: "إشعارات الطلبات الجديدة والتحديثات",
+        importance: 5,
+        visibility: 1,
+        sound: "default",
+        vibration: true,
+      });
+    } catch (e) {
+      console.log("Channel may already exist");
+    }
+
+    const bgEnabled = enableBackgroundMode();
+    if (!bgEnabled) {
+      showNotification("خطأ", "فشل تفعيل وضع الخلفية", "danger");
+      isOnline.value = false;
+      return;
+    }
+
+    connectWebSocket();
+
+    console.log("✅ Started listening for orders");
+  } catch (err) {
+    console.error("❌ Error starting listener:", err);
+    showNotification("خطأ", "فشل في بدء الخدمة", "danger");
+    isOnline.value = false;
+  }
+}
+
+async function stopListening() {
+  try {
+    console.log("🛑 Stopping listener...");
+
+    disableBackgroundMode();
+
+    stopHeartbeat();
+
+    if (ws) {
+      ws.close(1000, "User stopped listening");
+      ws = null;
+    }
+
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
+
+    isConnected.value = false;
+    connectionStatus.value = "غير متصل";
+    reconnectAttempts = 0;
+
+    console.log("✅ Stopped listening");
+    showNotification("تم الإيقاف", "تم إيقاف خدمة الاستماع للطلبات", "warning");
+  } catch (err) {
+    console.error("❌ Error stopping listener:", err);
+  }
+}
+
+const handleAppStateChange = (state: { isActive: boolean }) => {
+  console.log(`📱 App state: ${state.isActive ? "FOREGROUND" : "BACKGROUND"}`);
+
+  if (state.isActive && isOnline.value) {
+    console.log("📱 App resumed - checking connection...");
+
+    if (!isConnected.value || ws?.readyState !== WebSocket.OPEN) {
+      console.log("🔄 Reconnecting WebSocket...");
+      connectWebSocket();
+    }
+  } else if (!state.isActive && isOnline.value) {
+    console.log("📱 App in background - connection maintained");
+  }
+};
 
 watch(isOnline, async (newValue) => {
   if (newValue) {
-    console.log("🌐 Going online...");
-    await startListeningForOrders();
+    console.log("🟢 Going online...");
+    await startListening();
   } else {
-    console.log("🔌 Going offline...");
-    await stopListeningForOrders();
+    console.log("🔴 Going offline...");
+    await stopListening();
   }
 });
 
 onMounted(() => {
-  console.log("📱 Page mounted");
+  console.log("🚀 Component mounted");
+
+  App.addListener("appStateChange", handleAppStateChange);
+
+  LocalNotifications.addListener(
+    "localNotificationActionPerformed",
+    (notification) => {
+      console.log("🔔 Notification tapped:", notification);
+
+      if (notification.notification.extra?.orderId) {
+        const orderId = notification.notification.extra.orderId;
+        console.log("📦 Opening order:", orderId);
+      }
+    }
+  );
+
+  console.log("✅ Listeners registered");
 });
 
 onBeforeUnmount(() => {
-  stopListeningForOrders();
+  console.log("🧹 Cleaning up...");
+
+  stopListening();
+
+  App.removeAllListeners();
+  LocalNotifications.removeAllListeners();
+
+  console.log("✅ Cleanup complete");
 });
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-100">
-    <div
-      class="flex items-center justify-between bg-white p-4 rounded-lg shadow mb-4"
-    >
-      <div class="flex items-center space-x-3">
-        <div class="p-2 rounded-full">
-          <img src="/logo.webp" alt="Delivery Shop Logo" class="h-12 w-12" />
-        </div>
-        <div>
-          <h1 class="text-lg font-semibold">
-            {{ authStore.driver?.driver_full_name.split(" ")[0] }}
-          </h1>
-        </div>
-      </div>
-      <div class="flex items-center space-x-4">
-        <div class="flex items-center space-x-2">
-          <Check v-if="isOnline" class="h-5 w-5 text-green-500" />
-          <XCircle class="h-5 w-5 text-red-500" />
-          <SmartphoneCharging v-if="isOnline" class="h-5 w-5 text-green-500" />
-          <Smartphone v-else class="h-5 w-5 text-gray-500" />
-        </div>
+  <div class="min-h-screen bg-gray-50 p-4">
+    <Card class="max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle class="text-2xl text-center"> 🛵 Delivery Shop </CardTitle>
+        <p class="text-center text-sm text-gray-500">نظام استقبال الطلبات</p>
+      </CardHeader>
 
-        <div class="flex items-center space-x-2">
-          <Label for="online-mode">{{ isOnline ? "Online" : "Offline" }}</Label>
-          <Switch
-            id="online-mode"
-            :checked="isOnline"
-            @update:checked="toggleOnline"
-          />
-        </div>
+      <CardContent class="space-y-6">
+        <!-- Online/Offline Toggle -->
         <div
-          class="bg-gray-200 h-8 w-8 flex items-center justify-center rounded-full text-gray-700 font-semibold"
+          class="flex items-center justify-between p-4 bg-white rounded-lg border"
         >
-          A
+          <div class="flex items-center gap-3">
+            <component
+              :is="isOnline ? Bell : BellOff"
+              :class="isOnline ? 'text-green-600' : 'text-gray-400'"
+              class="w-6 h-6"
+            />
+            <div>
+              <Label class="text-base font-semibold">
+                {{ isOnline ? "متصل" : "غير متصل" }}
+              </Label>
+              <p class="text-xs text-gray-500">
+                {{
+                  isOnline ? "استقبال الطلبات مفعل" : "استقبال الطلبات متوقف"
+                }}
+              </p>
+            </div>
+          </div>
+          <Switch :checked="isOnline" @update:checked="isOnline = $event" />
         </div>
-      </div>
-    </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <Card class="shadow-md">
-        <CardHeader
-          class="flex flex-row items-center justify-between space-y-0 pb-2"
-        >
-          <CardTitle class="text-sm font-medium"> Today's Earnings </CardTitle>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-4 w-4 text-gray-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-          </svg>
-        </CardHeader>
-        <CardContent>
-          <div class="text-2xl font-bold">$0.00</div>
-          <p class="text-xs text-gray-500">From 0 deliveries</p>
-        </CardContent>
-      </Card>
-
-      <Card class="shadow-md">
-        <CardHeader
-          class="flex flex-row items-center justify-between space-y-0 pb-2"
-        >
-          <CardTitle class="text-sm font-medium"> Deliveries </CardTitle>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-4 w-4 text-gray-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-            />
-          </svg>
-        </CardHeader>
-        <CardContent>
-          <div class="text-2xl font-bold">0</div>
-          <p class="text-xs text-gray-500">Completed today</p>
-        </CardContent>
-      </Card>
-
-      <!-- Rating Card -->
-      <Card class="shadow-md">
-        <CardHeader
-          class="flex flex-row items-center justify-between space-y-0 pb-2"
-        >
-          <CardTitle class="text-sm font-medium"> Rating </CardTitle>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-4 w-4 text-gray-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.329 1.176l1.519 4.674c.3.921-.755 1.688-1.539 1.175l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.784.513-1.838-.254-1.539-1.175l1.519-4.674a1 1 0 00-.329-1.176l-3.976-2.888c-.784-.57-.382-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.519-4.674z"
-            />
-          </svg>
-        </CardHeader>
-        <CardContent>
-          <div class="flex items-center text-2xl font-bold">
-            4.8
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 text-yellow-400 ml-1"
-              viewBox="0 0 20 20"
-              fill="currentColor"
+        <!-- Connection Status -->
+        <div class="p-4 bg-white rounded-lg border space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700">حالة الاتصال:</span>
+            <Badge
+              :variant="isConnected ? 'default' : 'secondary'"
+              class="flex items-center gap-1"
             >
-              <path
-                d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.329 1.176l1.07 3.292c.3.921-.755 1.688-1.539 1.175l-2.8-2.034a1 1 0 00-1.176 0l-2.8 2.034c-.784.513-1.838-.254-1.539-1.175l1.07-3.292a1 1 0 00-.329-1.176l-2.8-2.034c-.784-.57-.382-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z"
-              />
-            </svg>
+              <component :is="isConnected ? Wifi : WifiOff" class="w-3 h-3" />
+              {{ connectionStatus }}
+            </Badge>
           </div>
-          <p class="text-xs text-gray-500">Based on 156 reviews</p>
-        </CardContent>
-      </Card>
 
-      <!-- Active Delivery Card -->
-      <Card class="lg:col-span-3 bg-orange-50 border-orange-200 shadow-md">
-        <CardHeader>
-          <CardTitle class="text-orange-600 flex items-center space-x-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700">آخر رسالة:</span>
+            <span class="text-sm text-gray-500">
+              {{ lastMessageTime || "لا توجد" }}
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700"
+              >الطلبات المستلمة:</span
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 7l-6 6m0 0l6 6m-6-6h10a2 2 0 002-2V8a2 2 0 00-2-2H7"
-              />
-            </svg>
-            <span>Active Delivery - #1234</span>
-          </CardTitle>
-          <p class="text-sm text-gray-600">Current delivery in progress</p>
-        </CardHeader>
-        <CardContent class="space-y-4">
-          <div>
-            <p class="font-semibold">Pickup Location</p>
-            <p>Pizza Palace</p>
-            <p class="text-sm text-gray-600">123 Downtown St, Cairo</p>
+            <Badge variant="outline">
+              {{ receivedOrdersCount }}
+            </Badge>
           </div>
-          <div>
-            <p class="font-semibold">Delivery Location</p>
-            <p>Sara Mohamed</p>
-            <p class="text-sm text-gray-600">456 Main St, Giza</p>
+        </div>
+
+        <!-- Status Indicator -->
+        <div
+          v-if="isOnline"
+          class="p-4 rounded-lg border-2"
+          :class="
+            isConnected
+              ? 'bg-green-50 border-green-200'
+              : 'bg-yellow-50 border-yellow-200'
+          "
+        >
+          <div class="flex items-center gap-2">
+            <component
+              :is="isConnected ? Check : XCircle"
+              :class="isConnected ? 'text-green-600' : 'text-yellow-600'"
+              class="w-5 h-5"
+            />
+            <p class="text-sm font-medium">
+              {{
+                isConnected
+                  ? "جاهز لاستقبال الطلبات"
+                  : "جاري الاتصال بالخادم..."
+              }}
+            </p>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+
+        <!-- Info -->
+        <div class="text-xs text-gray-500 text-center space-y-1">
+          <p>• سيتم استقبال الطلبات حتى عند إغلاق التطبيق</p>
+          <p>• تأكد من تفعيل الإشعارات في إعدادات الجهاز</p>
+          <p>• يرجى عدم إيقاف التطبيق من مدير المهام</p>
+        </div>
+      </CardContent>
+    </Card>
   </div>
 </template>
