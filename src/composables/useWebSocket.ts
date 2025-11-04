@@ -4,14 +4,28 @@ const ws = ref<WebSocket | null>(null);
 const isConnected = ref(false);
 const messages = ref<any[]>([]);
 
-export function useWebRestaurantSocket(restaurantId: number) {
+export function useWebRestaurantSocket(
+  restaurantId: number,
+  restaurantLocation: { lat: number; lng: number } | string
+) {
   function connect() {
     ws.value = new WebSocket("ws://localhost:3000");
+    const location = ref({ lat: 0, lng: 0 });
 
+    if (typeof restaurantLocation === "string") {
+      location.value = JSON.parse(restaurantLocation);
+    } else {
+      location.value = restaurantLocation;
+    }
     ws.value.onopen = () => {
       isConnected.value = true;
       console.log("✅ WebSocket connected");
-      ws.value?.send(JSON.stringify({ restaurant_id: restaurantId }));
+      ws.value?.send(
+        JSON.stringify({
+          restaurant_id: restaurantId,
+          restaurant_location: location.value,
+        })
+      );
     };
 
     ws.value.onmessage = (event) => {

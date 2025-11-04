@@ -7,13 +7,14 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.2.26",
     "@capacitor/android": "7.4.4",
     "@capacitor/app": "^7.0.2",
     "@capacitor/camera": "^7.0.2",
@@ -21,6 +22,7 @@
     "@capacitor/core": "^7.4.4",
     "@capacitor/filesystem": "^7.0.2",
     "@capacitor/local-notifications": "^7.0.3",
+    "@capawesome-team/capacitor-android-foreground-service": "^7.0.1",
     "@splinetool/viewer": "^1.10.90",
     "@tailwindcss/vite": "^4.1.16",
     "@vueuse/core": "^14.0.0",

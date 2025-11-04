@@ -37,7 +37,6 @@ const formData = ref({
   restaurant_name: "",
   city: "",
   address: "",
-  location: "",
   commercial_register: "",
   logo: null as File | null,
   logo_base64: "",
@@ -72,11 +71,15 @@ async function handleFileUpload(event: Event) {
   if (target.files && target.files[0]) {
     const file = target.files[0];
     formData.value.logo = file;
-    logoPhotoPreview.value = URL.createObjectURL(file);
 
     try {
       const base64 = await fileToBase64(file);
       formData.value.logo_base64 = base64;
+      logoPhotoPreview.value = URL.createObjectURL(
+        new Blob([base64.replace(/^data:image\/\w+;base64,/, "")], {
+          type: "image/jpeg",
+        })
+      );
     } catch (error) {
       console.error("Base64 conversion error:", error);
       toast.error("فشل في قراءة الصورة");
@@ -95,13 +98,12 @@ async function handleRegister() {
       restaurant_name: formData.value.restaurant_name,
       city: formData.value.city,
       address: formData.value.address,
-      location: formData.value.location,
       commercial_register: formData.value.commercial_register,
       logo: formData.value.logo_base64,
     };
 
     const resp = await CapacitorHttp.post({
-      url: `${baseUrl}/api/restaurant/register`,
+      url: `${baseUrl}/api/restaurants/register`,
       data: payload,
       headers: { "Content-Type": "application/json" },
     });
@@ -179,13 +181,13 @@ watch(
             />
           </div>
           <div class="grid gap-2">
-            <Label for="location">رابط خرائط جوجل</Label>
+            <Label for="commercial_register">رقم السجل التجاري</Label>
             <Input
-              id="location"
-              placeholder=" اكتب عنوان المطعم"
-              v-model="formData.location"
+              id="commercial_register"
+              type="text"
+              placeholder="123456789"
+              v-model="formData.commercial_register"
               required
-              class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
             />
           </div>
           <div class="grid gap-2">

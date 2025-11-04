@@ -29,7 +29,10 @@ const editDialogOpen = ref(false);
 const selectedOrder = ref<Order>({} as Order);
 const status = ref<any>({});
 
-const { messages } = useWebRestaurantSocket(auth.user?.id || 0);
+const { messages } = useWebRestaurantSocket(
+  auth.user?.id || 0,
+  auth.user.location
+);
 
 const currentPage = ref(1);
 const itemsPerPage = ref(50);

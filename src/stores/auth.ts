@@ -1,6 +1,7 @@
 import { ref } from "vue";
 import { defineStore } from "pinia";
 import { httpRequest } from "@/utils/http";
+import { toast } from "vue-sonner";
 
 interface Driver {
   driver_id: number;
@@ -16,6 +17,11 @@ interface Driver {
   license_photo: string;
   rate: number | null;
   created_at: string;
+}
+
+interface DriverSession extends Driver {
+  type: string;
+  shiftDuration: number;
 }
 
 export const useAuthStore = defineStore("auth", () => {
@@ -71,12 +77,13 @@ export const useAuthStore = defineStore("auth", () => {
     error.value = null;
     try {
       const response = await httpRequest<{
-        user: { id: number; type: string; shiftDuration: number };
+        user: DriverSession;
       }>({
         url: "/api/auth/driver",
         method: "GET",
       });
-      isAuthenticated.value = !!response?.user?.id;
+      isAuthenticated.value = !!response?.user?.driver_id;
+      driver.value = response?.user;
       type.value = "driver";
       return true;
     } catch (err: any) {
