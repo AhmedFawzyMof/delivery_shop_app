@@ -4,6 +4,12 @@ import LandingPage from "../views/LandingPage.vue";
 import LoginPage from "../views/LoginPage.vue";
 import RegisterPage from "../views/RegisterPage.vue";
 import DriverPanel from "../views/DriverPanel.vue";
+import RestaurantLogin from "../views/restaurants/LoginPage.vue";
+import RestaurantHomePage from "../views/restaurants/HomePage.vue";
+import RestaurantOrders from "../views/restaurants/HistoryPage.vue";
+import RestaurantReports from "../views/restaurants/OrderReportsPage.vue";
+import RestaurantCustomers from "../views/restaurants/CustomersListPage.vue";
+import RestaurantRegister from "../views/restaurants/RegisterPage.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,48 +33,32 @@ const router = createRouter({
       path: "/driver-panel",
       name: "driver-panel",
       component: DriverPanel,
-      // meta: { requiresAuth: true },
-    },
-    {
-      path: "/restaurant/dashboard",
-      component: () => import("../views/restaurants/HomePage.vue"),
-      meta: { requiresAuth: true },
     },
     {
       path: "/restaurant",
-      component: () => import("../views/restaurants/LoginPage.vue"),
+      component: RestaurantLogin,
+    },
+    {
+      path: "/restaurant/dashboard",
+      component: RestaurantHomePage,
     },
     {
       path: "/restaurant/orders",
-      component: () => import("../views/restaurants/HistoryPage.vue"),
-      meta: { requiresAuth: true },
+      component: RestaurantOrders,
     },
     {
       path: "/restaurant/reports",
-      component: () => import("../views/restaurants/OrderReportsPage.vue"),
-      meta: { requiresAuth: true },
+      component: RestaurantReports,
     },
     {
       path: "/restaurant/customers",
-      component: () => import("../views/restaurants/CustomersListPage.vue"),
-      meta: { requiresAuth: true },
+      component: RestaurantCustomers,
     },
     {
       path: "/restaurant/register",
-      component: () => import("../views/restaurants/RegisterPage.vue"),
+      component: RestaurantReports,
     },
   ],
-});
-
-router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore();
-  await authStore.checkSession();
-
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next("/");
-  } else {
-    next();
-  }
 });
 
 export default router;

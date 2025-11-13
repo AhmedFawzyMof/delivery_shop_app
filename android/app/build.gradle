@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "online.webmadeeasy.delivery_shop"
+    namespace "com.yourapp.id"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "online.webmadeeasy.delivery_shop"
+        applicationId "com.yourapp.id"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

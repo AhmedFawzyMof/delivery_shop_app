@@ -53,22 +53,18 @@ async function fetchWebRequest<T>(options: HttpRequestOptions): Promise<T> {
   const fetchOptions: RequestInit = {
     method,
     headers: {
+      "Content-Type": "application/json",
       ...headers,
     },
-    credentials: "include",
+    credentials: "include", // if your server uses cookies/session
   };
 
   if (data && (method === "POST" || method === "PUT")) {
-    if (data instanceof FormData) {
-      fetchOptions.body = data;
-    } else {
-      fetchOptions.body = JSON.stringify(data);
-    }
+    fetchOptions.body = data instanceof FormData ? data : JSON.stringify(data);
   }
 
   try {
-    const uri = baseUrl + url;
-    const response = await fetch(uri, fetchOptions);
+    const response = await fetch(baseUrl + url, fetchOptions);
 
     if (!response.ok) {
       const errorData = await response

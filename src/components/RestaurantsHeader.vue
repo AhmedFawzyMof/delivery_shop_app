@@ -29,9 +29,9 @@ const router = useRouter();
 
 onMounted(() => {
   auth.checkRestaurantSession();
-
   if (!auth.isAuthenticated) {
-    router.push("/restaurant");
+    auth.logout();
+    router.push("/");
   }
 });
 
@@ -56,7 +56,10 @@ const menuItems = [
     <div class="flex h-16 items-center justify-between px-6">
       <div class="flex items-center gap-3">
         <img
-          :src="auth.user?.logo_image || '/default-restaurant-logo.png'"
+          :src="
+            'http://192.168.1.8:3000' + auth.user?.logo_image ||
+            '/default-restaurant-logo.png'
+          "
           alt="Restaurant Logo"
           class="h-10 w-10 rounded-full object-cover"
         />
@@ -70,7 +73,6 @@ const menuItems = [
     </div>
 
     <div class="flex items-center gap-2 pl-3">
-      <CreateOrders />
       <Drawer v-model:open="isDrawerOpen">
         <DrawerTrigger as-child>
           <Button variant="ghost" size="icon">
@@ -80,9 +82,12 @@ const menuItems = [
 
         <DrawerContent dir="rtl">
           <DrawerHeader class="text-right">
-            <div class="flex items-center gap-3 mb-4">
+            <div class="flex items-center justify-between gap-3 mb-4">
               <img
-                :src="auth.user?.logo_image || '/default-restaurant-logo.png'"
+                :src="
+                  'http://192.168.1.8:3000' + auth.user?.logo_image ||
+                  '/default-restaurant-logo.png'
+                "
                 alt="Restaurant Logo"
                 class="h-12 w-12 rounded-full object-cover"
               />
@@ -109,6 +114,9 @@ const menuItems = [
                 <span>{{ item.label }}</span>
               </Button>
             </nav>
+            <Separator class="my-4" />
+
+            <CreateOrders />
 
             <Separator class="my-4" />
 

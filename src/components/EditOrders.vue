@@ -62,7 +62,7 @@ const handleSubmit = async () => {
 
   try {
     await httpRequest({
-      url: `/orders/${props.order.order_id}`,
+      url: `/api/orders/${props.order.order_id}`,
       method: "PUT",
       data: formData.value,
     });

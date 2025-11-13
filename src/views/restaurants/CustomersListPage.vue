@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
-import Header from "@/components/Header.vue";
+import Header from "@/components/RestaurantsHeader.vue";
 import CustomPagination from "@/components/CustomPagination.vue";
 import {
   Card,
@@ -39,7 +39,7 @@ const fetchUsers = async () => {
 
   try {
     const res = await httpRequest<{ users: User[]; totalItems: number }>({
-      url: `/users?page=${currentPage.value}&search=${search.value || ""}`,
+      url: `/api/users?page=${currentPage.value}&search=${search.value || ""}`,
       method: "GET",
     });
     users.value = res.users || [];
@@ -75,7 +75,7 @@ onMounted(fetchUsers);
         <CardDescription>استعرض جميع المستخدمين في النظام</CardDescription>
       </CardHeader>
       <CardContent>
-        <div class="flex flex-col md:flex-row gap-4 items-end mb-6">
+        <div class="flex flex-col md:flex-row gap-4 items-start mb-6">
           <div class="flex flex-col flex-1">
             <label class="text-sm font-medium mb-1">بحث بالاسم أو الهاتف</label>
             <Input

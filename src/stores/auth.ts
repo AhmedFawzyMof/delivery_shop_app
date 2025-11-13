@@ -1,7 +1,6 @@
 import { ref } from "vue";
 import { defineStore } from "pinia";
 import { httpRequest } from "@/utils/http";
-import { toast } from "vue-sonner";
 
 interface Driver {
   driver_id: number;
@@ -58,18 +57,34 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   async function restaurantlogin(name: string, password: string) {
-    const response = await httpRequest<{ user: any }>({
-      url: "/api/auth/restaurant/login",
-      method: "POST",
-      data: {
-        restaurant_name: name,
-        password,
-      },
-    });
+    isLoading.value = true;
+    error.value = null;
 
-    user.value = response.user;
-    type.value = "restaurant";
-    isAuthenticated.value = true;
+    try {
+      const response = await httpRequest<{ user: any }>({
+        url: "/api/auth/restaurant/login",
+        method: "POST",
+        data: {
+          restaurant_name: name,
+          password,
+        },
+      });
+
+      if (!response || !response.user)
+        throw new Error("Invalid server response");
+
+      user.value = response.user;
+      type.value = "restaurant";
+      isAuthenticated.value = true;
+      return true;
+    } catch (err: any) {
+      console.error("Restaurant login error:", err);
+      error.value = err.message || "Login failed";
+      isAuthenticated.value = false;
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   async function checkSession() {
@@ -103,8 +118,15 @@ export const useAuthStore = defineStore("auth", () => {
       method: "GET",
     });
 
+    user.value = response?.user;
     isAuthenticated.value = !!response?.user?.id;
     type.value = "restaurant";
+    return true;
+  }
+
+  async function setStationedAt(id: number) {
+    driver.value!.stationed_at = id;
+    return;
   }
 
   async function logout() {
@@ -138,5 +160,6 @@ export const useAuthStore = defineStore("auth", () => {
     login,
     logout,
     checkSession,
+    setStationedAt,
   };
 });

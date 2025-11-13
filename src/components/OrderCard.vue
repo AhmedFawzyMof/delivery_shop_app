@@ -18,7 +18,7 @@ const emits = defineEmits<{
 
 const handleUpdateOrderStatus = (orderId: number, newStatus: string) => {
   httpRequest({
-    url: `/orders/${orderId}?update_status=true`,
+    url: `/api/orders/${orderId}?update_status=true`,
     method: "PUT",
     data: { order_status: newStatus },
   })
@@ -43,7 +43,7 @@ const handleUpdateDeliveryCost = (
 ) => {
   const newCost = order.order_delivery_cost + cost;
   httpRequest({
-    url: `/orders/${orderId}`,
+    url: `/api/orders/${orderId}`,
     method: "PUT",
     data: {
       order_total_price: order.order_total_price,
@@ -94,6 +94,8 @@ function getStatus(status: string) {
       return "جاهز للاستلام";
     case "picked-up":
       return "تم الاستلام";
+    case "delivered":
+      return "تم التوصيل";
     default:
       return "في التحضير";
   }
@@ -132,7 +134,7 @@ function getStatus(status: string) {
 
     <div class="order-items">
       <img
-        :src="'http://localhost:3000' + order.order_receipt"
+        :src="'http://192.168.1.8:3000' + order.order_receipt"
         alt="Receipt Image"
         class="h-36 w-36 rounded-md object-cover mr-2"
       />

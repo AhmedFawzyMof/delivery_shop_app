@@ -1,47 +1,70 @@
-import { ref, onUnmounted } from "vue";
+import { ref, onUnmounted, type Ref } from "vue";
+import { toast } from "vue-sonner";
 
-const ws = ref<WebSocket | null>(null);
-const isConnected = ref(false);
-const messages = ref<any[]>([]);
+const WS_URL = "ws://192.168.1.8:3000";
+
+interface RestaurantLocation {
+  lat: number;
+  lng: number;
+}
+
+interface WSMessage {
+  type: string;
+  [key: string]: any;
+}
 
 export function useWebRestaurantSocket(
   restaurantId: number,
-  restaurantLocation: { lat: number; lng: number } | string
-) {
-  function connect() {
-    ws.value = new WebSocket("ws://localhost:3000");
-    const location = ref({ lat: 0, lng: 0 });
+  restaurantLocation: string
+): {
+  ws: Ref<WebSocket | null>;
+  isConnected: Ref<boolean>;
+  messages: Ref<WSMessage[]>;
+  sendMessage: (data: object) => void;
+} {
+  const ws = ref<WebSocket | null>(null);
+  const isConnected = ref(false);
+  const messages = ref<WSMessage[]>([]);
 
-    if (typeof restaurantLocation === "string") {
-      location.value = JSON.parse(restaurantLocation);
-    } else {
-      location.value = restaurantLocation;
-    }
+  const location: string = restaurantLocation.replace(/\\/g, "");
+
+  function connect() {
+    ws.value = new WebSocket(WS_URL);
+    const jsonLocation = JSON.parse(location);
+
+    console.log("Trying to connect to WebSocket:", WS_URL);
+
     ws.value.onopen = () => {
       isConnected.value = true;
-      console.log("✅ WebSocket connected");
       ws.value?.send(
         JSON.stringify({
+          type: "register_restaurant",
           restaurant_id: restaurantId,
-          restaurant_location: location.value,
+          restaurant_location: jsonLocation,
         })
       );
     };
 
     ws.value.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      messages.value.push(data);
-      console.log("📩 New message:", data);
+      try {
+        const data: WSMessage = JSON.parse(event.data);
+        messages.value.push(data);
+        console.log("📩 New message:", data);
+      } catch (err) {
+        console.error("⚠️ Failed to parse WebSocket message:", event.data, err);
+      }
     };
 
     ws.value.onclose = () => {
       isConnected.value = false;
-      console.warn("❌ WebSocket disconnected, reconnecting...");
-      setTimeout(connect, 3000); // auto-reconnect
+      console.warn("❌ WebSocket disconnected. Reconnecting in 3s...");
+      toast.warning("WebSocket disconnected. Reconnecting...");
+      setTimeout(connect, 3000);
     };
 
     ws.value.onerror = (err) => {
       console.error("WebSocket error:", err);
+      toast.error("WebSocket connection failed. Check server status.");
       ws.value?.close();
     };
   }
@@ -53,6 +76,9 @@ export function useWebRestaurantSocket(
   const sendMessage = (data: object) => {
     if (ws.value && ws.value.readyState === WebSocket.OPEN) {
       ws.value.send(JSON.stringify(data));
+    } else {
+      console.warn("⚠️ WebSocket not connected. Cannot send message:", data);
+      toast.warning("Cannot send message. WebSocket not connected.");
     }
   };
 

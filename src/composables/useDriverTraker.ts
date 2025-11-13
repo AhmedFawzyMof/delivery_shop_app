@@ -2,6 +2,7 @@ import { ref, onBeforeUnmount, onMounted } from "vue";
 import { ForegroundService } from "@capawesome-team/capacitor-android-foreground-service";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { useAuthStore } from "@/stores/auth";
+import { useOrdersStore } from "@/stores/orders";
 import type {
   BackgroundGeolocationPlugin,
   Location,
@@ -15,9 +16,31 @@ const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>(
 
 const WS_URL = "ws://192.168.1.8:3000";
 const LOCATION_INTERVAL = 30000;
+const MAX_RECONNECT_ATTEMPTS = 3;
+
+type ConnectionTypes = "driver_init" | "location_update" | "update_orders";
+
+type SimpleLocation = {
+  lat: number;
+  lng: number;
+};
+
+type DriverConnection = {
+  type: ConnectionTypes;
+  driver_id?: number;
+  driver_name?: string;
+  driver_type?: string;
+  driver_city?: string;
+  location?: SimpleLocation;
+  driver_status?: string;
+  driver_stationed_at?: any;
+  driver_orders?: number[];
+  timestamp?: number;
+};
 
 export function useDriverTracker() {
   const authStore = useAuthStore();
+  const ordersStore = useOrdersStore();
   const driver = authStore.driver;
   const isOnline = ref(true);
   const isConnected = ref(true);
@@ -29,9 +52,9 @@ export function useDriverTracker() {
 
   async function requestPermissions() {
     const permResult = await LocalNotifications.requestPermissions();
-    alert(JSON.stringify(permResult));
+
     if (permResult.display !== "granted") {
-      alert("⚠️ Notifications permission not granted");
+      console.log("⚠️ Notifications permission not granted");
     } else {
       console.log("✅ Notifications permission granted");
     }
@@ -44,7 +67,7 @@ export function useDriverTracker() {
         name: "Orders Notifications",
         description: "Channel for nearby order alerts",
         importance: 5,
-        sound: "default",
+        sound: "order_sound",
         vibration: true,
         visibility: 1,
       });
@@ -52,6 +75,29 @@ export function useDriverTracker() {
     } catch (err) {
       console.error("❌ Failed to create notification channel:", err);
     }
+  }
+
+  function showOrderNotification(order: any) {
+    const notificationId = Math.floor(Math.random() * 1000000);
+    setTimeout(() => {
+      LocalNotifications.schedule({
+        notifications: [
+          {
+            id: notificationId,
+            title: "📦 طلب جديد قريب منك",
+            body: `الطلب من ${order.restaurant.name}`,
+            channelId: "orders_channel",
+            smallIcon: "ic_launcher",
+            sound: "order_sound",
+            schedule: {
+              allowWhileIdle: true,
+            },
+          },
+        ],
+      }).catch((err) =>
+        alert(`❌ Notification failed:, ${JSON.stringify(err.message)}`)
+      );
+    }, 1000);
   }
 
   async function startForegroundService() {
@@ -127,7 +173,7 @@ export function useDriverTracker() {
     ws.onopen = () => {
       console.log("✅ WS connected");
       isConnected.value = true;
-      sendInitialData();
+      sendInitialData(lastLocation.value);
     };
 
     ws.onclose = () => {
@@ -144,26 +190,26 @@ export function useDriverTracker() {
     ws.onmessage = async (event) => {
       try {
         const data = JSON.parse(event.data);
+
         if (data.type === "new_order_nearby") {
-          console.log("🆕 New nearby order:", data.order);
+          showOrderNotification(data.order);
+          sendUpdateOrdersWs(data.order.order_id, data.order.restaurant_id);
+          ordersStore.addOrder(data.order);
+          authStore.setStationedAt(data.order.restaurant_id);
+          toast.success("📦 طلب جديد قريب منك");
+        }
 
-          await LocalNotifications.schedule({
-            notifications: [
-              {
-                title: "📦 طلب جديد قريب منك",
-                body: `الطلب من ${data.order.restaurant_name} - ${data.order.distance.toFixed(1)} كم`,
-                id: Date.now(),
-                channelId: "orders_channel",
-                sound: "default",
-                smallIcon: "ic_launcher",
-                schedule: { at: new Date(Date.now() + 1000) },
-              },
-            ],
-          });
+        if (data.type === "updated_order") {
+          ordersStore.updateOrder(data.order);
+        }
 
-          window.dispatchEvent(
-            new CustomEvent("new-order", { detail: data.order })
-          );
+        if (data.type === "order_status_updated") {
+          if (data.order_status === "delivered") {
+            ordersStore.removeOrder(data.order_id);
+            sendFreeDriverWs();
+            return;
+          }
+          ordersStore.updateOrderStatus(data.order_id, data.order_status);
         }
       } catch (err) {
         console.error("❌ Failed to handle WS message:", err);
@@ -172,38 +218,73 @@ export function useDriverTracker() {
   }
 
   function reconnectWebSocket() {
+    console.log("Attempting to reconnect...");
     setTimeout(() => {
       if (isOnline.value) connectWebSocket();
     }, 5000);
   }
 
-  function sendInitialData() {
+  function sendUpdateOrdersWs(order_id: number, restaurant_id: number) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
     ws.send(
       JSON.stringify({
-        type: "driver_init",
+        type: "update_orders",
         driver_id: driver?.driver_id,
-        driver_name: driver?.driver_full_name,
-        driver_type: "driver",
-        driver_city: driver?.driver_city,
+        driver_stationed_at: restaurant_id,
+        driver_status: "PICKING_UP",
+        order_id: order_id,
       })
     );
+  }
+
+  function sendFreeDriverWs() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(
+      JSON.stringify({
+        type: "free_driver",
+        driver_id: driver?.driver_id,
+        driver_stationed_at: ordersStore.orders[0]?.restaurant_id ?? null,
+        driver_orders: ordersStore.orders.map((order) => order.order_id),
+        driver_status: "READY",
+      })
+    );
+  }
+
+  function sendInitialData(location?: { lat: number; lng: number } | null) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const data: Partial<DriverConnection> = {
+      type: "driver_init",
+      driver_id: driver?.driver_id,
+      driver_name: driver?.driver_full_name,
+      driver_type: "driver",
+      driver_city: driver?.driver_city,
+      driver_status: "READY",
+      driver_stationed_at: ordersStore.orders[0]?.restaurant_id ?? null,
+      driver_orders: ordersStore.orders.map((order) => order.order_id),
+    };
+
+    if (location) {
+      Object.assign(data, { location });
+    }
+
+    ws.send(JSON.stringify(data));
   }
 
   function startLocationInterval() {
     stopLocationInterval();
     locationInterval = setInterval(() => {
       if (ws && ws.readyState === WebSocket.OPEN && lastLocation.value) {
-        ws.send(
-          JSON.stringify({
-            type: "location_update",
-            driver_id: authStore.driver?.driver_id,
-            driver_name: authStore.driver?.driver_full_name,
-            driver_type: authStore.driver?.driver_type,
-            location: lastLocation.value,
-            timestamp: Date.now(),
-          })
-        );
+        const data: Partial<DriverConnection> = {
+          type: "location_update",
+          driver_id: authStore.driver?.driver_id,
+          location: lastLocation.value,
+          driver_stationed_at: ordersStore?.orders[0]?.restaurant_id ?? null,
+          driver_orders: ordersStore?.orders.map((order) => order.order_id),
+          timestamp: Date.now(),
+        };
+        ws.send(JSON.stringify(data));
         console.log("📡 Sent location:", lastLocation.value);
       }
     }, LOCATION_INTERVAL);

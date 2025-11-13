@@ -74,7 +74,7 @@ const handleCreateOrder = async () => {
 
   try {
     await httpRequest({
-      url: "/orders",
+      url: "/api/orders",
       method: "POST",
       data: payload,
     });
@@ -122,7 +122,7 @@ watch(
         searchLoading.value = true;
         showDropdown.value = true;
         const res = await httpRequest<any>({
-          url: `/users?search=${phone}&page=1`,
+          url: `/api/users?search=${phone}&page=1`,
           method: "GET",
         });
 

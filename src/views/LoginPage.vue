@@ -20,8 +20,9 @@ import {
 } from "@/components/ui/select";
 import { Loader } from "lucide-vue-next";
 import { useRouter } from "vue-router";
-import { Camera, CameraResultType } from "@capacitor/camera";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { useAuthStore } from "@/stores/auth";
+import { useOrdersStore } from "@/stores/orders";
 
 const id_number = ref("");
 const password = ref("");
@@ -31,6 +32,7 @@ const loading = ref(false);
 
 const router = useRouter();
 const authStore = useAuthStore();
+const ordersStore = useOrdersStore();
 
 onMounted(async () => {
   await authStore.checkSession();
@@ -53,8 +55,8 @@ async function handleLogin() {
       quality: 70,
       resultType: CameraResultType.Base64,
       allowEditing: false,
+      source: CameraSource.Camera,
       promptLabelHeader: "تأكيد الهوية بالسيلفي",
-      promptLabelPhoto: "خد سيلفي",
     });
 
     if (!photo.base64String) {

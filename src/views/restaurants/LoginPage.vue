@@ -38,8 +38,10 @@ async function handleLogin() {
   loading.value = true;
   error.value = "";
   try {
-    await auth.restaurantlogin(name.value, password.value);
-    router.push("/restaurant/dashboard");
+    const status = await auth.restaurantlogin(name.value, password.value);
+    if (status) {
+      router.push("/restaurant/dashboard");
+    }
   } catch (err: any) {
     error.value = err.response?.data?.message || "Login failed";
   } finally {

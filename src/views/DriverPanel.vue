@@ -1,25 +1,44 @@
 <script setup lang="ts">
+import { useOrdersStore } from "@/stores/orders";
 import { useDriverTracker } from "@/composables/useDriverTraker";
-import { onMounted, onBeforeUnmount, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Wifi, WifiOff, DollarSign, CheckCircle, Star } from "lucide-vue-next";
+import DriverOrders from "@/components/DriverOrders.vue";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { httpRequest } from "@/utils/http";
+import OrderHistory from "@/components/OrderHistory.vue";
 
+const ordersStore = useOrdersStore();
 const { isOnline, goOnline, goOffline } = useDriverTracker();
 const authStore = useAuthStore();
 const router = useRouter();
 
 const completedToday = ref(0);
 const todayEarnings = ref(0);
-const orders = ref<any[]>([]); // 👈 store new orders
+const orders = computed(() => ordersStore.orders);
 
-function handleNewOrder(event: CustomEvent) {
-  const order = event.detail;
-  orders.value.unshift(order);
-  console.log("📥 New order added:", order);
-  alert("تم انشاء طلب جديد!");
+async function getDriverData() {
+  try {
+    const res = await httpRequest<{
+      status: {
+        completedToday: number;
+        todayEarnings: number;
+        sumOfOrders: number;
+      };
+    }>({
+      url: `/api/driver/${authStore.driver?.driver_id}`,
+      method: "GET",
+    });
+
+    completedToday.value = res.status.completedToday;
+    todayEarnings.value = res.status.todayEarnings;
+  } catch (err: any) {
+    console.error("Failed to fetch driver data:", err);
+  }
 }
 
 onMounted(() => {
@@ -28,13 +47,15 @@ onMounted(() => {
     authStore.logout();
     router.push("/");
   }
-
-  window.addEventListener("new-order", handleNewOrder as EventListener);
+  getDriverData();
 });
 
-onBeforeUnmount(() => {
-  window.removeEventListener("new-order", handleNewOrder as EventListener);
-});
+watch(
+  () => orders.value,
+  () => {
+    getDriverData();
+  }
+);
 </script>
 
 <template>
@@ -59,6 +80,7 @@ onBeforeUnmount(() => {
     </div>
 
     <Button
+      :disabled="orders.length > 0"
       @click="isOnline ? goOffline() : goOnline()"
       class="flex items-center gap-2 relative bg-primary rounded shadow w-10 h-10"
     >
@@ -68,75 +90,84 @@ onBeforeUnmount(() => {
       </span>
     </Button>
   </header>
-  <div class="p-6">
-    <div dir="rtl" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <Card>
-        <CardHeader
-          class="flex flex-row items-center justify-between space-y-0 pb-2"
-        >
-          <CardTitle class="text-sm font-medium">أرباح اليوم</CardTitle>
-          <DollarSign class="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div class="text-2xl font-bold text-primary">
-            {{ todayEarnings.toFixed(2) }}
-          </div>
-          <p class="text-xs text-muted-foreground">
-            من {{ completedToday }} توصيلات
-          </p>
-        </CardContent>
-      </Card>
+  <Tabs dir="rtl" default-value="current-orders" class="w-full">
+    <TabsList class="grid w-full grid-cols-2">
+      <TabsTrigger value="current-orders">الطلبات الحالية</TabsTrigger>
+      <TabsTrigger value="order-history">سجل الطلبات</TabsTrigger>
+    </TabsList>
+    <TabsContent value="current-orders">
+      <div class="p-6">
+        <div dir="rtl" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardHeader
+              class="flex flex-row items-center justify-between space-y-0 pb-2"
+            >
+              <CardTitle class="text-sm font-medium">أرباح اليوم</CardTitle>
+              <DollarSign class="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div class="text-2xl font-bold text-primary">
+                {{ todayEarnings.toFixed(2) }}
+              </div>
+              <p class="text-xs text-muted-foreground">
+                من {{ completedToday }} توصيلات
+              </p>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader
-          class="flex flex-row items-center justify-between space-y-0 pb-2"
-        >
-          <CardTitle class="text-sm font-medium">التوصيلات</CardTitle>
-          <CheckCircle class="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div class="text-2xl font-bold text-green-500">
-            {{ completedToday }}
-          </div>
-          <p class="text-xs text-muted-foreground">اكتملت اليوم</p>
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader
+              class="flex flex-row items-center justify-between space-y-0 pb-2"
+            >
+              <CardTitle class="text-sm font-medium">التوصيلات</CardTitle>
+              <CheckCircle class="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div class="text-2xl font-bold text-green-500">
+                {{ completedToday }}
+              </div>
+              <p class="text-xs text-muted-foreground">اكتملت اليوم</p>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader
-          class="flex flex-row items-center justify-between space-y-0 pb-2"
-        >
-          <CardTitle class="text-sm font-medium">التقييم</CardTitle>
-          <Star class="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div
-            dir="ltr"
-            class="text-2xl font-bold flex items-center gap-1 w-full justify-end"
-          >
-            {{ authStore.driver?.rate || 0.0 }}
-            <Star class="h-5 w-5 fill-yellow-400 text-yellow-400" />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  </div>
+          <Card>
+            <CardHeader
+              class="flex flex-row items-center justify-between space-y-0 pb-2"
+            >
+              <CardTitle class="text-sm font-medium">التقييم</CardTitle>
+              <Star class="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div
+                dir="ltr"
+                class="text-2xl font-bold flex items-center gap-1 w-full justify-end"
+              >
+                {{ authStore.driver?.rate || 0.0 }}
+                <Star class="h-5 w-5 fill-yellow-400 text-yellow-400" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-  <div class="p-6" dir="rtl">
-    <h2 class="text-2xl font-bold mb-4">الطلبات القريبة</h2>
+      <div class="p-6">
+        <h2 class="text-2xl font-bold mb-4">الطلبات القريبة</h2>
 
-    <div v-if="orders.length === 0" class="text-gray-400">
-      لا توجد طلبات حالياً
-    </div>
+        <div v-if="orders.length === 0" class="text-gray-400">
+          لا توجد طلبات حالياً
+        </div>
 
-    <div
-      v-for="order in orders"
-      :key="order.id"
-      class="border p-4 mb-3 rounded-lg shadow-sm"
-    >
-      <h3 class="font-semibold text-lg">{{ order.restaurant_name }}</h3>
-      <!-- <p>المسافة: {{ order.distance.toFixed(1) }} كم</p> -->
-      <!-- <p>الموقع: {{ order.location.address }}</p> -->
-    </div>
-  </div>
+        <div v-else>
+          <DriverOrders
+            v-for="order in orders"
+            :key="order.order_id"
+            :order="order"
+          />
+        </div>
+      </div>
+    </TabsContent>
+    <TabsContent value="order-history">
+      <OrderHistory />
+    </TabsContent>
+  </Tabs>
 </template>

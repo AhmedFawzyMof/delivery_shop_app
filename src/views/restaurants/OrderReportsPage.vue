@@ -7,7 +7,7 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
-import Header from "@/components/Header.vue";
+import Header from "@/components/RestaurantsHeader.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Clock, Package, Truck, Loader2, CheckCircle } from "lucide-vue-next";
@@ -39,7 +39,7 @@ const fetchOrdersByDate = async () => {
   loading.value = true;
   try {
     const res = await httpRequest<{ orders: Order[] }>({
-      url: `/orders?from=${fromDate.value}&to=${toDate.value}&page=${currentPage.value}`,
+      url: `/api/orders?from=${fromDate.value}&to=${toDate.value}&page=${currentPage.value}`,
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -57,7 +57,7 @@ const fetchOrdersByDate = async () => {
 const fetchStats = async () => {
   try {
     const res = await httpRequest<{ stats: any }>({
-      url: `/orders?from=${fromDate.value}&to=${toDate.value}&status=true&page=${currentPage.value}`,
+      url: `/api/orders?from=${fromDate.value}&to=${toDate.value}&status=true&page=${currentPage.value}`,
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -124,7 +124,7 @@ watch(currentPage, async (newPage, oldPage) => {
         >
       </CardHeader>
       <CardContent>
-        <div class="flex flex-col md:flex-row gap-4 items-end">
+        <div class="flex flex-col md:flex-row gap-4 items-start">
           <div class="flex flex-col">
             <label class="text-sm font-medium mb-1">من تاريخ</label>
             <Input type="date" v-model="fromDate" />
@@ -214,7 +214,7 @@ watch(currentPage, async (newPage, oldPage) => {
               <div class="flex flex-wrap gap-4">
                 <img
                   v-if="order.order_receipt"
-                  :src="'http://localhost:3000' + order.order_receipt"
+                  :src="'http://192.168.1.8:3000' + order.order_receipt"
                   alt="Receipt Image"
                   class="h-36 w-36 rounded-md object-cover"
                 />

@@ -44,6 +44,7 @@ const router = useRouter();
 
 onMounted(() => {
   auth.checkSession();
+  auth.checkRestaurantSession();
 });
 
 const routes: Route[] = [
