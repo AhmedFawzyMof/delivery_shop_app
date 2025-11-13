@@ -57,7 +57,7 @@ const menuItems = [
       <div class="flex items-center gap-3">
         <img
           :src="
-            'http://192.168.1.8:3000' + auth.user?.logo_image ||
+            'https://deliveryshop.webmadeeasy.online' + auth.user?.logo_image ||
             '/default-restaurant-logo.png'
           "
           alt="Restaurant Logo"
@@ -85,8 +85,8 @@ const menuItems = [
             <div class="flex items-center justify-between gap-3 mb-4">
               <img
                 :src="
-                  'http://192.168.1.8:3000' + auth.user?.logo_image ||
-                  '/default-restaurant-logo.png'
+                  'https://deliveryshop.webmadeeasy.online' +
+                    auth.user?.logo_image || '/default-restaurant-logo.png'
                 "
                 alt="Restaurant Logo"
                 class="h-12 w-12 rounded-full object-cover"

@@ -134,7 +134,7 @@ function getStatus(status: string) {
 
     <div class="order-items">
       <img
-        :src="'http://192.168.1.8:3000' + order.order_receipt"
+        :src="'https://deliveryshop.webmadeeasy.online' + order.order_receipt"
         alt="Receipt Image"
         class="h-36 w-36 rounded-md object-cover mr-2"
       />

@@ -28,7 +28,7 @@ import Textarea from "@/components/ui/textarea/Textarea.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
-const baseUrl = "http://192.168.1.8:3000";
+const baseUrl = "https://deliveryshop.webmadeeasy.online";
 const loading = ref(false);
 
 const cities = ref<{ city_id: number; city_name: string }[]>([]);

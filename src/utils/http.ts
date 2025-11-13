@@ -2,7 +2,7 @@ import { Capacitor } from "@capacitor/core";
 
 import { CapacitorHttp } from "@capacitor/core";
 
-const baseUrl = "http://192.168.1.8:3000";
+const baseUrl = "https://deliveryshop.webmadeeasy.online";
 interface HttpRequestOptions {
   url: string;
   method?: "GET" | "POST" | "PUT" | "DELETE";

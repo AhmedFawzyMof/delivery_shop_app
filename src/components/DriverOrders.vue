@@ -205,7 +205,10 @@ function getStatus(status: string) {
         >
           <h4 class="font-medium mb-2">صورة الإيصال</h4>
           <img
-            :src="'http://192.168.1.8:3000' + props.order.order_receipt"
+            :src="
+              'https://deliveryshop.webmadeeasy.online' +
+              props.order.order_receipt
+            "
             alt="صورة الإيصال"
             class="w-full max-h-64 object-contain rounded-lg border"
           />

@@ -208,7 +208,10 @@ watch(currentPage, async (newPage, oldPage) => {
               <div class="flex flex-wrap gap-4">
                 <img
                   v-if="order.order_receipt"
-                  :src="'http://192.168.1.8:3000' + order.order_receipt"
+                  :src="
+                    'https://deliveryshop.webmadeeasy.online' +
+                    order.order_receipt
+                  "
                   alt="Receipt Image"
                   class="h-36 w-36 rounded-md object-cover"
                 />
