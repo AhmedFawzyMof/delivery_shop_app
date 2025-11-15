@@ -139,13 +139,13 @@ function goTo(uri: string) {
           تواصل معنا
         </a>
         <DropdownMenu>
-          <DropdownMenuTrigger class="cursor-pointer"
-            >الطيارين</DropdownMenuTrigger
-          >
+          <DropdownMenuTrigger class="cursor-pointer">
+            الطيارين
+          </DropdownMenuTrigger>
           <DropdownMenuContent>
             <template v-if="auth.isAuthenticated && auth.type === 'driver'">
               <DropdownMenuItem @click="goTo('/driver-panel')">
-                الملف الشخصي
+                <p>الملف الشخصي</p>
               </DropdownMenuItem>
               <DropdownMenuItem @click="auth.logout">
                 تسجيل الخروج
@@ -214,13 +214,13 @@ function goTo(uri: string) {
                     <PackageCheck class="w-4 h-4" />
                     <p>الطيارين</p>
                   </div>
-                  <div v-if="driverDropDown" class="ml-2">
+                  <div v-if="driverDropDown" class="ml-2 text-lg">
                     <template
                       v-if="auth.isAuthenticated && auth.type === 'driver'"
                     >
                       <router-link
                         to="/driver-panel"
-                        class="flex items-center gap-5 text-black"
+                        class="flex items-center gap-5 text-black mb-2"
                       >
                         <PackageCheck class="w-4 h-4" />
                         <p>الملف الشخصي</p>
@@ -236,7 +236,7 @@ function goTo(uri: string) {
                     <template v-if="!auth.isAuthenticated">
                       <router-link
                         to="/login"
-                        class="flex items-center gap-5 text-black"
+                        class="flex items-center gap-5 text-black mb-2"
                       >
                         <ScanFace class="w-4 h-4" />
                         <p>تسجيل دخول</p>
@@ -259,13 +259,13 @@ function goTo(uri: string) {
                     <Utensils class="w-4 h-4" />
                     <p>المطاعم</p>
                   </div>
-                  <div v-if="restaurantDropDown" class="ml-2">
+                  <div v-if="restaurantDropDown" class="ml-2 text-lg">
                     <template
                       v-if="auth.isAuthenticated && auth.type === 'restaurant'"
                     >
                       <router-link
                         to="/restaurant/dashboard"
-                        class="flex items-center gap-5 text-black"
+                        class="flex items-center gap-5 text-black mb-2"
                       >
                         <Utensils class="w-4 h-4" />
                         <p>الملف الشخصي</p>
@@ -281,7 +281,7 @@ function goTo(uri: string) {
                     <template v-if="!auth.isAuthenticated">
                       <router-link
                         to="/restaurant"
-                        class="flex items-center gap-5 text-black"
+                        class="flex items-center gap-5 text-black mb-2"
                       >
                         <ScanFace class="w-4 h-4" />
                         <p>تسجيل دخول</p>

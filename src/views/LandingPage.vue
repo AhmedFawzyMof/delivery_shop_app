@@ -17,6 +17,9 @@ import {
   Clock,
   ArrowLeft,
 } from "lucide-vue-next";
+import { httpRequest } from "@/utils/http";
+import { ref } from "vue";
+import { toast } from "vue-sonner";
 
 const router = useRouter();
 
@@ -24,9 +27,28 @@ function goToHash(uri: string) {
   window.location.hash = `#${uri}`;
 }
 
-// function goToRegister() {
-//   router.push("/register");
-// }
+const name = ref("");
+const phone = ref("");
+const message = ref("");
+
+async function submitContact() {
+  const res = await httpRequest<any>({
+    url: "/api/contacts",
+    method: "POST",
+    data: {
+      name: name.value,
+      phone: phone.value,
+      message: message.value,
+    },
+  });
+
+  if (res.success) {
+    toast.success("تم ارسال الرسالة بنجاح");
+    name.value = "";
+    phone.value = "";
+    message.value = "";
+  }
+}
 </script>
 
 <template>
@@ -339,7 +361,7 @@ function goToHash(uri: string) {
           <!-- Contact Form -->
           <div>
             <h3 class="text-2xl font-bold text-gray-800 mb-6">أرسل رسالة</h3>
-            <form class="space-y-6">
+            <form class="space-y-6" @submit.prevent="submitContact">
               <div>
                 <Label
                   for="name"
@@ -349,6 +371,7 @@ function goToHash(uri: string) {
                 <Input
                   id="name"
                   type="text"
+                  v-model="name"
                   placeholder="أدخل اسمك"
                   class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
                 />
@@ -362,6 +385,7 @@ function goToHash(uri: string) {
                 <Input
                   id="phone"
                   type="tel"
+                  v-model="phone"
                   placeholder="01000000000"
                   class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
                 />
@@ -375,6 +399,7 @@ function goToHash(uri: string) {
                 <textarea
                   id="message"
                   rows="5"
+                  v-model="message"
                   placeholder="اكتب تفاصيل طلبك أو سؤالك"
                   class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
                 ></textarea>

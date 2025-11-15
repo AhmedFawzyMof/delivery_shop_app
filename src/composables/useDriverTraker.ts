@@ -101,6 +101,29 @@ export function useDriverTracker() {
     }, 1000);
   }
 
+  function showUpdateOrderNotification(order_id: any) {
+    const notificationId = Math.floor(Math.random() * 1000000);
+    setTimeout(() => {
+      LocalNotifications.schedule({
+        notifications: [
+          {
+            id: notificationId,
+            title: "📦 تم تحديث الطلب",
+            body: `الطلب برقم ${order_id}`,
+            channelId: "orders_channel",
+            smallIcon: "ic_launcher",
+            sound: "order_sound",
+            schedule: {
+              allowWhileIdle: true,
+            },
+          },
+        ],
+      }).catch((err) =>
+        alert(`❌ Notification failed:, ${JSON.stringify(err.message)}`)
+      );
+    }, 1000);
+  }
+
   async function startForegroundService() {
     try {
       await ForegroundService.startForegroundService({
@@ -205,6 +228,9 @@ export function useDriverTracker() {
         }
 
         if (data.type === "order_status_updated") {
+          if (data.order_status === "picked-up") {
+            showUpdateOrderNotification(data.order_id);
+          }
           if (data.order_status === "delivered") {
             ordersStore.removeOrder(data.order_id);
             sendFreeDriverWs();
