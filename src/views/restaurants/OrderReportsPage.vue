@@ -16,6 +16,7 @@ import type { Order } from "@/types";
 import { toast } from "vue-sonner";
 import CustomPagination from "@/components/CustomPagination.vue";
 import { httpRequest } from "@/utils/http";
+import baseUrl from "@/utils/baseUrl";
 
 const orders = ref<Order[]>([]);
 const loading = ref(false);
@@ -214,10 +215,7 @@ watch(currentPage, async (newPage, oldPage) => {
               <div class="flex flex-wrap gap-4">
                 <img
                   v-if="order.order_receipt"
-                  :src="
-                    'https://deliveryshop.webmadeeasy.online' +
-                    order.order_receipt
-                  "
+                  :src="baseUrl + order.order_receipt"
                   alt="Receipt Image"
                   class="h-36 w-36 rounded-md object-cover"
                 />

@@ -23,6 +23,7 @@
     "@capacitor/core": "^7.4.4",
     "@capacitor/filesystem": "^7.0.2",
     "@capacitor/local-notifications": "^7.0.3",
+    "@capacitor/preferences": "^7.0.2",
     "@capawesome-team/capacitor-android-foreground-service": "^7.0.1",
     "@splinetool/viewer": "^1.10.90",
     "@tailwindcss/vite": "^4.1.16",

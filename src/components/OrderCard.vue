@@ -7,6 +7,7 @@ import { toast } from "vue-sonner";
 import { Clock, Package, Truck, Pen } from "lucide-vue-next";
 import { h } from "vue";
 import { httpRequest } from "@/utils/http";
+import baseUrl from "@/utils/baseUrl";
 
 defineProps<{
   order: Order;
@@ -134,7 +135,7 @@ function getStatus(status: string) {
 
     <div class="order-items">
       <img
-        :src="'https://deliveryshop.webmadeeasy.online' + order.order_receipt"
+        :src="baseUrl + order.order_receipt"
         alt="Receipt Image"
         class="h-36 w-36 rounded-md object-cover mr-2"
       />
@@ -169,6 +170,7 @@ function getStatus(status: string) {
       </Button>
 
       <Button
+        v-if="order.order_status !== 'delivered'"
         size="sm"
         class="bg-blue-600 hover:bg-blue-700"
         @click="handleEditClick(order, true)"
@@ -177,7 +179,10 @@ function getStatus(status: string) {
         تعديل
       </Button>
     </div>
-    <div class="flex flex-col space-y-2">
+    <div
+      v-if="order.order_status !== 'delivered'"
+      class="flex flex-col space-y-2"
+    >
       <span>إضافة علي التوصيل</span>
       <div class="bonus btns space-x-1 md:space-x-2">
         <Button @click="handleUpdateDeliveryCost(order.order_id, order, 5)"

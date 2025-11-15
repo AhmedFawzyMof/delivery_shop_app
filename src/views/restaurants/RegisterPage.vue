@@ -25,10 +25,10 @@ import {
 } from "@/components/ui/select";
 import { Loader } from "lucide-vue-next";
 import Textarea from "@/components/ui/textarea/Textarea.vue";
-
+import baseUrl from "@/utils/baseUrl";
 const router = useRouter();
 const authStore = useAuthStore();
-const baseUrl = "https://deliveryshop.webmadeeasy.online";
+
 const loading = ref(false);
 
 const cities = ref<{ city_id: number; city_name: string }[]>([]);

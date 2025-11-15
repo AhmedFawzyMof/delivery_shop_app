@@ -14,7 +14,8 @@ const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>(
   "BackgroundGeolocation"
 );
 
-const WS_URL = "ws://185.97.144.106:8080";
+const WS_URL = "wss://deliveryshop.webmadeeasy.online";
+// const WS_URL = "ws://192.168.1.8:3000";
 const LOCATION_INTERVAL = 30000;
 const MAX_RECONNECT_ATTEMPTS = 3;
 

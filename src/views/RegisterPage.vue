@@ -24,10 +24,11 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import { Loader } from "lucide-vue-next";
+import baseUrl from "@/utils/baseUrl";
 
 const router = useRouter();
 const authStore = useAuthStore();
-const baseUrl = "https://deliveryshop.webmadeeasy.online";
+
 const loading = ref(false);
 
 const cities = ref<{ city_id: number; city_name: string }[]>([]);
@@ -39,11 +40,7 @@ const formData = ref({
   type: "",
   id_number: "",
   plate_number: "",
-  license_photo: null as File | null,
-  license_photo_base64: "",
 });
-
-const licensePhotoPreview = ref<string | null>(null);
 
 async function fetchCities() {
   try {
@@ -58,36 +55,6 @@ async function fetchCities() {
   }
 }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-    reader.readAsDataURL(file);
-  });
-}
-
-async function handleFileUpload(event: Event) {
-  const target = event.target as HTMLInputElement;
-  if (target.files && target.files[0]) {
-    const file = target.files[0];
-    formData.value.license_photo = file;
-    licensePhotoPreview.value = URL.createObjectURL(file);
-
-    try {
-      const base64 = await fileToBase64(file);
-      formData.value.license_photo_base64 = base64;
-    } catch (error) {
-      console.error("Base64 conversion error:", error);
-      toast.error("فشل في قراءة الصورة");
-    }
-  } else {
-    formData.value.license_photo = null;
-    formData.value.license_photo_base64 = "";
-    licensePhotoPreview.value = null;
-  }
-}
-
 async function handleRegister() {
   loading.value = true;
   try {
@@ -98,7 +65,6 @@ async function handleRegister() {
       type: formData.value.type,
       id_number: formData.value.id_number,
       plate_number: formData.value.plate_number,
-      license_photo: formData.value.license_photo_base64,
     };
 
     const resp = await CapacitorHttp.post({
@@ -137,15 +103,6 @@ onMounted(async () => {
   }
   fetchCities();
 });
-
-watch(
-  () => formData.value.license_photo,
-  (file, oldFile) => {
-    if (licensePhotoPreview.value && oldFile) {
-      URL.revokeObjectURL(licensePhotoPreview.value);
-    }
-  }
-);
 </script>
 
 <template>
@@ -234,23 +191,6 @@ watch(
               v-model="formData.plate_number"
               required
             />
-          </div>
-          <div class="grid gap-2">
-            <Label for="license_photo">صورة الرخصة</Label>
-            <Input
-              id="license_photo"
-              type="file"
-              accept="image/*"
-              @change="handleFileUpload"
-              required
-            />
-            <div v-if="licensePhotoPreview" class="mt-2">
-              <img
-                :src="licensePhotoPreview"
-                alt="معاينة صورة الرخصة"
-                class="max-w-full h-auto rounded-md"
-              />
-            </div>
           </div>
 
           <Button type="submit" class="w-full" :disabled="loading">

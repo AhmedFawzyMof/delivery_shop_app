@@ -16,6 +16,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import Separator from "./ui/separator/Separator.vue";
+import baseUrl from "@/utils/baseUrl";
 
 const loading = ref(false);
 const fromDate = ref(new Date().toISOString().split("T")[0]);
@@ -41,8 +42,9 @@ async function getOrderHistory() {
       method: "GET",
     });
 
+    console.log(res);
+
     orders.value = res.orders;
-    alert(JSON.stringify(res));
     deliveryCost.value = res.earnings.delivery_cost;
     sumOfOrders.value = res.earnings.sum_of_orders;
     sumOfOrderBasedDate.value = res.earnings.sum_of_orders_based_on_date;
@@ -145,10 +147,7 @@ onMounted(() => {
               <div class="flex flex-col items-start text-start gap-4">
                 <img
                   v-if="order.order_receipt"
-                  :src="
-                    'https://deliveryshop.webmadeeasy.online' +
-                    order.order_receipt
-                  "
+                  :src="baseUrl + order.order_receipt"
                   alt="Receipt Image"
                   class="h-36 w-36 rounded-md object-cover"
                 />

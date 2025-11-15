@@ -1,6 +1,7 @@
 import { ref } from "vue";
 import { defineStore } from "pinia";
 import { httpRequest } from "@/utils/http";
+import { Preferences } from "@capacitor/preferences";
 
 interface Driver {
   driver_id: number;
@@ -25,30 +26,54 @@ interface DriverSession extends Driver {
 
 export const useAuthStore = defineStore("auth", () => {
   const driver = ref<Driver | null>(null);
-  const isAuthenticated = ref(false);
   const user = ref<any>(null);
+  const isAuthenticated = ref(false);
   const type = ref("");
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
+  async function init() {
+    const { value: token } = await Preferences.get({ key: "sessionToken" });
+
+    if (!token) {
+      isAuthenticated.value = false;
+      return;
+    }
+
+    const okDriver = await checkSession();
+    if (!okDriver) {
+      const okRestaurant = await checkRestaurantSession();
+      if (!okRestaurant) {
+        await logout();
+      }
+    }
+  }
+
   async function login(credentials: Record<string, any>) {
-    isLoading.value = true;
-    error.value = null;
     try {
-      const response = await httpRequest<{ driver: Driver }>({
+      isLoading.value = true;
+      error.value = null;
+
+      const response = await httpRequest<{
+        driver: Driver;
+        sessionToken: string;
+      }>({
         url: "/api/auth/driver/login",
         method: "POST",
         data: credentials,
       });
-      if (!response || !response.driver)
-        throw new Error("Invalid server response");
+
+      await Preferences.set({
+        key: "sessionToken",
+        value: response.sessionToken,
+      });
+
       driver.value = response.driver;
       type.value = "driver";
       isAuthenticated.value = true;
       return true;
     } catch (err: any) {
-      console.error("Login error:", err);
-      error.value = err.message || "Login failed";
+      error.value = err.message;
       isAuthenticated.value = false;
       return false;
     } finally {
@@ -57,11 +82,14 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   async function restaurantlogin(name: string, password: string) {
-    isLoading.value = true;
-    error.value = null;
-
     try {
-      const response = await httpRequest<{ user: any }>({
+      isLoading.value = true;
+      error.value = null;
+
+      const response = await httpRequest<{
+        user: any;
+        sessionToken: string;
+      }>({
         url: "/api/auth/restaurant/login",
         method: "POST",
         data: {
@@ -70,16 +98,17 @@ export const useAuthStore = defineStore("auth", () => {
         },
       });
 
-      if (!response || !response.user)
-        throw new Error("Invalid server response");
+      await Preferences.set({
+        key: "sessionToken",
+        value: response.sessionToken,
+      });
 
       user.value = response.user;
       type.value = "restaurant";
       isAuthenticated.value = true;
       return true;
     } catch (err: any) {
-      console.error("Restaurant login error:", err);
-      error.value = err.message || "Login failed";
+      error.value = err.message;
       isAuthenticated.value = false;
       return false;
     } finally {
@@ -88,78 +117,71 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   async function checkSession() {
-    isLoading.value = true;
-    error.value = null;
     try {
-      const response = await httpRequest<{
-        user: DriverSession;
-      }>({
+      const response = await httpRequest<{ user: DriverSession }>({
         url: "/api/auth/driver",
         method: "GET",
       });
-      isAuthenticated.value = !!response?.user?.driver_id;
-      driver.value = response?.user;
+
+      if (!response?.user?.driver_id) return false;
+
+      driver.value = response.user;
       type.value = "driver";
+      isAuthenticated.value = true;
       return true;
-    } catch (err: any) {
-      isAuthenticated.value = false;
+    } catch {
       return false;
-    } finally {
-      isLoading.value = false;
     }
   }
 
   async function checkRestaurantSession() {
-    isLoading.value = true;
-    error.value = null;
+    try {
+      const response = await httpRequest<{ user: any }>({
+        url: "/api/auth/restaurant",
+        method: "GET",
+      });
 
-    const response = await httpRequest<{ user: any }>({
-      url: "/api/auth/restaurant",
-      method: "GET",
-    });
+      if (!response?.user?.id) return false;
 
-    user.value = response?.user;
-    isAuthenticated.value = !!response?.user?.id;
-    type.value = "restaurant";
-    return true;
-  }
-
-  async function setStationedAt(id: number) {
-    driver.value!.stationed_at = id;
-    return;
+      user.value = response.user;
+      type.value = "restaurant";
+      isAuthenticated.value = true;
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async function logout() {
-    isLoading.value = true;
-    error.value = null;
-    try {
-      await httpRequest({
-        url: "/api/auth/logout",
-        method: "POST",
-      });
-      driver.value = null;
-      isAuthenticated.value = false;
-      return true;
-    } catch (err: any) {
-      error.value = err.message || "Logout failed";
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
+    await httpRequest({
+      url: "/api/auth/logout",
+      method: "POST",
+    });
+
+    await Preferences.remove({ key: "sessionToken" });
+
+    driver.value = null;
+    user.value = null;
+    isAuthenticated.value = false;
+  }
+
+  function setStationedAt(id: number) {
+    if (driver.value) driver.value.stationed_at = id;
   }
 
   return {
     driver,
     user,
+    type,
     isAuthenticated,
     isLoading,
-    type,
     error,
-    restaurantlogin,
-    checkRestaurantSession,
+    init,
     login,
-    logout,
+    restaurantlogin,
     checkSession,
+    checkRestaurantSession,
+    logout,
     setStationedAt,
   };
 });

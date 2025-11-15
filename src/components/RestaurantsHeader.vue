@@ -23,12 +23,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import CreateOrders from "./CreateOrders.vue";
+import baseUrl from "@/utils/baseUrl";
 
 const auth = useAuthStore();
 const router = useRouter();
 
-onMounted(() => {
-  auth.checkRestaurantSession();
+onMounted(async () => {
+  await auth.checkRestaurantSession();
   if (!auth.isAuthenticated) {
     auth.logout();
     router.push("/");
@@ -57,8 +58,7 @@ const menuItems = [
       <div class="flex items-center gap-3">
         <img
           :src="
-            'https://deliveryshop.webmadeeasy.online' + auth.user?.logo_image ||
-            '/default-restaurant-logo.png'
+            baseUrl + auth.user?.logo_image || '/default-restaurant-logo.png'
           "
           alt="Restaurant Logo"
           class="h-10 w-10 rounded-full object-cover"
@@ -85,8 +85,8 @@ const menuItems = [
             <div class="flex items-center justify-between gap-3 mb-4">
               <img
                 :src="
-                  'https://deliveryshop.webmadeeasy.online' +
-                    auth.user?.logo_image || '/default-restaurant-logo.png'
+                  baseUrl + auth.user?.logo_image ||
+                  '/default-restaurant-logo.png'
                 "
                 alt="Restaurant Logo"
                 class="h-12 w-12 rounded-full object-cover"

@@ -42,9 +42,20 @@ const restaurantDropDown = ref(false);
 const auth = useAuthStore();
 const router = useRouter();
 
-onMounted(() => {
-  auth.checkSession();
-  auth.checkRestaurantSession();
+onMounted(async () => {
+  await auth.checkSession();
+  await auth.checkRestaurantSession();
+
+  if (auth.isAuthenticated) {
+    if (auth.type === "driver") {
+      router.push("/driver-panel");
+      return;
+    }
+    if (auth.type === "restaurant") {
+      router.push("/restaurant/dashboard");
+      return;
+    }
+  }
 });
 
 const routes: Route[] = [

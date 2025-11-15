@@ -16,6 +16,7 @@ import {
 import { h } from "vue";
 import { httpRequest } from "@/utils/http";
 import ReportRestaurantForm from "@/components/ReportRestaurantForm.vue";
+import baseUrl from "@/utils/baseUrl";
 
 const props = defineProps({
   order: {
@@ -205,10 +206,7 @@ function getStatus(status: string) {
         >
           <h4 class="font-medium mb-2">صورة الإيصال</h4>
           <img
-            :src="
-              'https://deliveryshop.webmadeeasy.online' +
-              props.order.order_receipt
-            "
+            :src="baseUrl + props.order.order_receipt"
             alt="صورة الإيصال"
             class="w-full max-h-64 object-contain rounded-lg border"
           />
