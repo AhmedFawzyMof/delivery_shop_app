@@ -14,8 +14,8 @@ const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>(
   "BackgroundGeolocation"
 );
 
-// const WS_URL = "wss://deliveryshop.cloud/";
-const WS_URL = "ws://192.168.1.19:8080";
+const WS_URL = "wss://deliveryshop.cloud";
+// const WS_URL = "ws://192.168.1.19:8080";
 
 type ConnectionTypes = "driver_init" | "location_update" | "update_orders";
 

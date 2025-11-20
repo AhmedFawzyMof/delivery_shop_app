@@ -94,7 +94,7 @@ function goToRegister() {
 
 <template>
   <div
-    class="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4"
+    class="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4 mt-2"
   >
     <router-link
       to="/landing"
