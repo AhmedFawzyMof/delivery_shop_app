@@ -24,7 +24,7 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import { Loader } from "lucide-vue-next";
-import baseUrl from "@/utils/baseUrl";
+import api from "@/api/axios";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -44,10 +44,7 @@ const formData = ref({
 
 async function fetchCities() {
   try {
-    const resp = await CapacitorHttp.get({
-      url: `${baseUrl}/api/cities`,
-      webFetchExtra: { credentials: "include" },
-    });
+    const resp = await api.get("cities");
     cities.value = resp.data;
   } catch (err: any) {
     console.error("fetchCities error:", err);
@@ -67,11 +64,7 @@ async function handleRegister() {
       plate_number: formData.value.plate_number,
     };
 
-    const resp = await CapacitorHttp.post({
-      url: `${baseUrl}/api/driver/register`,
-      data: payload,
-      headers: { "Content-Type": "application/json" },
-    });
+    const resp = await api.post("drivers/register", payload);
 
     if (resp.status < 200 || resp.status >= 300) {
       throw new Error("خطأ في إرسال بيانات التسجيل");

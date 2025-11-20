@@ -163,6 +163,12 @@ export const useAuthStore = defineStore("auth", () => {
     if (driver.value) driver.value.stationed_at = id;
   }
 
+  function changeCity(city: string) {
+    if (driver.value && driver.value.driver_city) {
+      driver.value.driver_city = city;
+    }
+  }
+
   return {
     driver,
     user,
@@ -177,5 +183,6 @@ export const useAuthStore = defineStore("auth", () => {
     checkRestaurantSession,
     logout,
     setStationedAt,
+    changeCity,
   };
 });

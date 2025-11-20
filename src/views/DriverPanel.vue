@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useDriverTracker } from "@/composables/useDriverTraker";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OrderHistory from "@/components/OrderHistory.vue";
 import DriverTab from "@/components/DriverTab.vue";
 import { useOrdersStore } from "@/stores/orders";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectLabel,
+  SelectGroup,
+} from "@/components/ui/select";
+import { toast } from "vue-sonner";
+import api from "@/api/axios";
 
 const { isOnline, goOnline, goOffline } = useDriverTracker();
 const authStore = useAuthStore();
@@ -16,6 +27,24 @@ const ordersStore = useOrdersStore();
 const router = useRouter();
 const orders = computed(() => ordersStore.orders);
 const activeTab = ref("current-orders");
+const city = ref(authStore.driver?.driver_city || "");
+const cities = ref<{ city_id: number; city_name: string }[]>([]);
+
+const handleChangeCity = () => {
+  authStore.changeCity(city.value);
+  goOffline();
+  goOnline();
+};
+
+async function fetchCities() {
+  try {
+    const resp = await api.get("cities");
+    cities.value = resp.data;
+  } catch (err: any) {
+    console.error("fetchCities error:", err);
+    toast.error("فشل تحميل المدن");
+  }
+}
 
 const handleLogout = () => {
   authStore.logout();
@@ -28,7 +57,13 @@ onMounted(async () => {
     authStore.logout();
     router.push("/");
   }
+  fetchCities();
 });
+
+watch(
+  () => city.value,
+  () => handleChangeCity
+);
 </script>
 
 <template>
@@ -51,7 +86,7 @@ onMounted(async () => {
         <p class="text-xs text-gray-400">Driver Dashboard</p>
       </div>
     </div>
-    <div class="flex items-center">
+    <div class="flex items-center gap-2">
       <Button
         :disabled="orders.length > 0"
         @click="isOnline ? goOffline() : goOnline()"
@@ -70,6 +105,23 @@ onMounted(async () => {
       </Button>
     </div>
   </header>
+  <Select v-model="city">
+    <SelectTrigger class="w-full">
+      <SelectValue placeholder="اختر المدينة" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectGroup>
+        <SelectLabel class="text-gray-400">المدينة</SelectLabel>
+        <SelectItem
+          v-for="city in cities"
+          :key="city.city_id"
+          :value="city.city_name"
+        >
+          {{ city.city_name }}
+        </SelectItem>
+      </SelectGroup>
+    </SelectContent>
+  </Select>
   <Tabs
     v-model="activeTab"
     dir="rtl"
