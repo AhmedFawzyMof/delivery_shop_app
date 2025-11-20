@@ -152,7 +152,7 @@ function goTo(uri: string) {
               </DropdownMenuItem>
             </template>
             <template v-else>
-              <DropdownMenuItem @click="goTo('/login')">
+              <DropdownMenuItem @click="goTo('/')">
                 تسجيل الدخول
               </DropdownMenuItem>
               <DropdownMenuItem @click="goTo('/register')">
@@ -235,7 +235,7 @@ function goTo(uri: string) {
                     </template>
                     <template v-if="!auth.isAuthenticated">
                       <router-link
-                        to="/login"
+                        to="/"
                         class="flex items-center gap-5 text-black mb-2"
                       >
                         <ScanFace class="w-4 h-4" />

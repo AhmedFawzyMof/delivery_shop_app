@@ -6,6 +6,7 @@ import DriverOrders from "@/components/DriverOrders.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { httpRequest } from "@/utils/http";
 import { useOrdersStore } from "@/stores/orders";
+import api from "@/api/axios";
 
 const authStore = useAuthStore();
 const ordersStore = useOrdersStore();
@@ -16,21 +17,11 @@ const orders = computed(() => ordersStore.orders);
 
 async function getDriverData() {
   try {
-    const res = await httpRequest<{
-      status: {
-        completedToday: number;
-        todayEarnings: number;
-        sumOfOrders: number;
-      };
-      orders: any;
-    }>({
-      url: `/api/driver/${authStore.driver?.driver_id}`,
-      method: "GET",
-    });
+    const res = await api.get(`/driver/${authStore.driver?.driver_id}`);
 
-    completedToday.value = res.status.completedToday;
-    todayEarnings.value = res.status.todayEarnings;
-    ordersStore.orders = res.orders;
+    completedToday.value = res.data.status.completedToday;
+    todayEarnings.value = res.data.status.todayEarnings;
+    ordersStore.orders = res.data.orders;
   } catch (err: any) {
     console.error("Failed to fetch driver data:", err);
   }

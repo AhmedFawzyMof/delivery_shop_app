@@ -14,10 +14,8 @@ const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>(
   "BackgroundGeolocation"
 );
 
-const WS_URL = "wss://deliveryshop.webmadeeasy.online";
-// const WS_URL = "ws://192.168.1.8:3000";
-const LOCATION_INTERVAL = 30000;
-const MAX_RECONNECT_ATTEMPTS = 3;
+// const WS_URL = "wss://deliveryshop.webmadeeasy.online";
+const WS_URL = "ws://192.168.1.19:8080";
 
 type ConnectionTypes = "driver_init" | "location_update" | "update_orders";
 
@@ -48,7 +46,6 @@ export function useDriverTracker() {
   const lastLocation = ref<{ lat: number; lng: number } | null>(null);
 
   let ws: WebSocket | null = null;
-  let locationInterval: ReturnType<typeof setInterval> | null = null;
   let watcherId: string | null = null;
 
   async function requestPermissions() {
@@ -88,7 +85,7 @@ export function useDriverTracker() {
             title: "📦 طلب جديد قريب منك",
             body: `الطلب من ${order.restaurant.name}`,
             channelId: "orders_channel",
-            smallIcon: "ic_launcher",
+            smallIcon: "ic_launcher_foreground",
             sound: "order_sound",
             schedule: {
               allowWhileIdle: true,
@@ -111,7 +108,7 @@ export function useDriverTracker() {
             title: "📦 تم تحديث الطلب",
             body: `الطلب برقم ${order_id}`,
             channelId: "orders_channel",
-            smallIcon: "ic_launcher",
+            smallIcon: "ic_launcher_foreground",
             sound: "order_sound",
             schedule: {
               allowWhileIdle: true,
@@ -151,22 +148,40 @@ export function useDriverTracker() {
     try {
       const result = await BackgroundGeolocation.addWatcher(
         {
-          backgroundMessage: "في انتظار الطلبات الجديدة.",
-          backgroundTitle: "تتبع الطلبات",
+          backgroundTitle: "تتبع السائق",
+          backgroundMessage: "في انتظار الطلبات الجديدة...",
+          distanceFilter: 40,
           requestPermissions: true,
           stale: false,
-          distanceFilter: 50,
         },
         (location: Location | undefined, error?: any) => {
           if (error) {
             console.error("❌ Location error:", error);
             return;
           }
+          if (!location) return;
+
           lastLocation.value = {
-            lat: location?.latitude!,
-            lng: location?.longitude!,
+            lat: location.latitude,
+            lng: location.longitude,
           };
-          console.log("📍 Location update:", lastLocation.value);
+
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(
+              JSON.stringify({
+                type: "location_update",
+                driver_id: authStore.driver?.driver_id,
+                location: lastLocation.value,
+                driver_stationed_at:
+                  ordersStore.orders[0]?.restaurant_id ?? null,
+                driver_orders: ordersStore.orders.map(
+                  (order) => order.order_id
+                ),
+                timestamp: Date.now(),
+              })
+            );
+            console.log("📡 LIVE LOCATION SENT:", lastLocation.value);
+          }
         }
       );
 
@@ -176,7 +191,6 @@ export function useDriverTracker() {
       console.error("❌ Geolocation failed:", err);
     }
   }
-
   async function stopGeolocation() {
     try {
       if (watcherId) {
@@ -197,7 +211,7 @@ export function useDriverTracker() {
     ws.onopen = () => {
       console.log("✅ WS connected");
       isConnected.value = true;
-      sendInitialData(lastLocation.value);
+      sendInitialData();
     };
 
     ws.onclose = () => {
@@ -228,7 +242,7 @@ export function useDriverTracker() {
         }
 
         if (data.type === "order_status_updated") {
-          if (data.order_status === "picked-up") {
+          if (data.order_status === "ready") {
             showUpdateOrderNotification(data.order_id);
           }
           if (data.order_status === "delivered") {
@@ -279,8 +293,10 @@ export function useDriverTracker() {
     );
   }
 
-  function sendInitialData(location?: { lat: number; lng: number } | null) {
+  async function sendInitialData() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const location = await waitForLocation();
+
     const data: Partial<DriverConnection> = {
       type: "driver_init",
       driver_id: driver?.driver_id,
@@ -290,6 +306,7 @@ export function useDriverTracker() {
       driver_status: "READY",
       driver_stationed_at: ordersStore.orders[0]?.restaurant_id ?? null,
       driver_orders: ordersStore.orders.map((order) => order.order_id),
+      location,
     };
 
     if (location) {
@@ -299,27 +316,23 @@ export function useDriverTracker() {
     ws.send(JSON.stringify(data));
   }
 
-  function startLocationInterval() {
-    stopLocationInterval();
-    locationInterval = setInterval(() => {
-      if (ws && ws.readyState === WebSocket.OPEN && lastLocation.value) {
-        const data: Partial<DriverConnection> = {
-          type: "location_update",
-          driver_id: authStore.driver?.driver_id,
-          location: lastLocation.value,
-          driver_stationed_at: ordersStore?.orders[0]?.restaurant_id ?? null,
-          driver_orders: ordersStore?.orders.map((order) => order.order_id),
-          timestamp: Date.now(),
-        };
-        ws.send(JSON.stringify(data));
-        console.log("📡 Sent location:", lastLocation.value);
-      }
-    }, LOCATION_INTERVAL);
-  }
+  async function waitForLocation(): Promise<{ lat: number; lng: number }> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject("Location timeout"), 10000); // 10s timeout
 
-  function stopLocationInterval() {
-    if (locationInterval) clearInterval(locationInterval);
-    locationInterval = null;
+      if (lastLocation.value) {
+        clearTimeout(timeout);
+        return resolve(lastLocation.value);
+      }
+
+      const checkLocation = setInterval(() => {
+        if (lastLocation.value) {
+          clearInterval(checkLocation);
+          clearTimeout(timeout);
+          resolve(lastLocation.value);
+        }
+      }, 500);
+    });
   }
 
   async function goOnline() {
@@ -329,12 +342,10 @@ export function useDriverTracker() {
     await startForegroundService();
     await startGeolocation();
     connectWebSocket();
-    startLocationInterval();
   }
 
   async function goOffline() {
     isOnline.value = false;
-    stopLocationInterval();
     if (ws) ws.close(1000, "Driver offline");
     ws = null;
     await stopForegroundService();

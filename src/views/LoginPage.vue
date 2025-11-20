@@ -18,7 +18,7 @@ import {
   SelectValue,
   SelectLabel,
 } from "@/components/ui/select";
-import { Loader } from "lucide-vue-next";
+import { ArrowLeft, ArrowRight, Loader } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { useAuthStore } from "@/stores/auth";
@@ -49,29 +49,30 @@ async function handleLogin() {
   try {
     loading.value = true;
 
+    // Take photo
     const photo = await Camera.getPhoto({
-      quality: 70,
-      resultType: CameraResultType.Base64,
+      quality: 40,
+      resultType: CameraResultType.Uri,
       allowEditing: false,
       source: CameraSource.Camera,
       promptLabelHeader: "تأكيد الهوية بالسيلفي",
     });
 
-    if (!photo.base64String) {
+    if (!photo.path) {
       alert("لازم تاخد سيلفي علشان تسجل الدخول.");
       return;
     }
 
-    imageBase64.value = `data:image/jpeg;base64,${photo.base64String}`;
+    const response = await fetch(photo.webPath!);
+    const selfieBlob = await response.blob();
 
-    const payload = {
-      id_number: id_number.value,
-      password: password.value,
-      shift: shift.value,
-      selfie: imageBase64.value,
-    };
+    const formData = new FormData();
+    formData.append("id_number", id_number.value);
+    formData.append("password", password.value);
+    formData.append("shift", shift.value.toString());
+    formData.append("selfie", selfieBlob, "selfie.jpg");
 
-    const success = await authStore.login(payload);
+    const success = await authStore.login(formData);
 
     if (success) {
       router.push("/driver-panel");
@@ -92,10 +93,26 @@ function goToRegister() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+  <div
+    class="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4"
+  >
+    <router-link
+      to="/landing"
+      class="flex items-center gap-2 text-black mb-2 text-lg md:text-2xl absolute top-4 left-4 hover:underline"
+    >
+      <ArrowLeft class="w-4 h-4 md:w-6 md:h-6" />
+      <p>الصفحة الرئيسية</p>
+    </router-link>
+    <router-link
+      to="/restaurant"
+      class="flex items-center gap-2 text-black mb-2 text-lg md:text-2xl absolute top-4 right-4 hover:underline"
+    >
+      <p>المطاعم</p>
+      <ArrowRight class="w-4 h-4 md:w-6 md:h-6" />
+    </router-link>
     <Card class="w-full max-w-md">
       <CardHeader class="text-center">
-        <CardTitle class="text-2xl font-bold">تسجيل الدخول</CardTitle>
+        <CardTitle class="text-2xl font-bold">تسجيل الدخول الطيار</CardTitle>
         <CardDescription>
           اكتب بياناتك وخد سيلفي علشان تدخل على لوحة السواقين
         </CardDescription>

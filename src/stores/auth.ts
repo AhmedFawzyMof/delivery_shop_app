@@ -2,6 +2,7 @@ import { ref } from "vue";
 import { defineStore } from "pinia";
 import { httpRequest } from "@/utils/http";
 import { Preferences } from "@capacitor/preferences";
+import api from "@/api/axios";
 
 interface Driver {
   driver_id: number;
@@ -49,26 +50,19 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function login(credentials: Record<string, any>) {
+  async function login(formData: FormData) {
     try {
       isLoading.value = true;
       error.value = null;
 
-      const response = await httpRequest<{
-        driver: Driver;
-        sessionToken: string;
-      }>({
-        url: "/api/auth/driver/login",
-        method: "POST",
-        data: credentials,
-      });
+      const response = await api.post("/auth/driver/login", formData);
 
       await Preferences.set({
         key: "sessionToken",
-        value: response.sessionToken,
+        value: response.data.sessionToken,
       });
 
-      driver.value = response.driver;
+      driver.value = response.data.driver;
       type.value = "driver";
       isAuthenticated.value = true;
       return true;

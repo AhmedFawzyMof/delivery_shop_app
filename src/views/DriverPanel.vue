@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 import { Button } from "@/components/ui/button";
-import { Wifi, WifiOff } from "lucide-vue-next";
+import { LogOut, Wifi, WifiOff } from "lucide-vue-next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OrderHistory from "@/components/OrderHistory.vue";
 import DriverTab from "@/components/DriverTab.vue";
@@ -16,6 +16,11 @@ const ordersStore = useOrdersStore();
 const router = useRouter();
 const orders = computed(() => ordersStore.orders);
 const activeTab = ref("current-orders");
+
+const handleLogout = () => {
+  authStore.logout();
+  router.push("/");
+};
 
 onMounted(async () => {
   await authStore.checkSession();
@@ -46,17 +51,24 @@ onMounted(async () => {
         <p class="text-xs text-gray-400">Driver Dashboard</p>
       </div>
     </div>
-
-    <Button
-      :disabled="orders.length > 0"
-      @click="isOnline ? goOffline() : goOnline()"
-      class="flex items-center gap-2 relative bg-primary rounded shadow w-10 h-10"
-    >
-      <span class="text-white">
-        <Wifi v-if="isOnline" class="" />
-        <WifiOff v-else />
-      </span>
-    </Button>
+    <div class="flex items-center">
+      <Button
+        :disabled="orders.length > 0"
+        @click="isOnline ? goOffline() : goOnline()"
+        class="flex items-center gap-2 relative bg-primary rounded shadow w-10 h-10"
+      >
+        <span class="text-white">
+          <Wifi v-if="isOnline" class="" />
+          <WifiOff v-else />
+        </span>
+      </Button>
+      <Button
+        @click="handleLogout"
+        class="flex items-center gap-2 relative bg-primary rounded shadow w-10 h-10"
+      >
+        <LogOut />
+      </Button>
+    </div>
   </header>
   <Tabs
     v-model="activeTab"

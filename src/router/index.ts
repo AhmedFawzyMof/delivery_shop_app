@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { useAuthStore } from "@/stores/auth";
 import LandingPage from "../views/LandingPage.vue";
 import LoginPage from "../views/LoginPage.vue";
 import RegisterPage from "../views/RegisterPage.vue";
@@ -15,12 +14,12 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: "/",
+      path: "/landing",
       name: "landing",
       component: LandingPage,
     },
     {
-      path: "/login",
+      path: "/",
       name: "login",
       component: LoginPage,
     },
@@ -56,7 +55,7 @@ const router = createRouter({
     },
     {
       path: "/restaurant/register",
-      component: RestaurantReports,
+      component: RestaurantRegister,
     },
   ],
 });
