@@ -38,7 +38,9 @@ const handleChangeCity = () => {
 
 async function fetchCities() {
   try {
-    const resp = await api.get("cities");
+    const resp = await api.get("/cities", {
+      params: { driver_id: authStore.driver?.driver_id },
+    });
     cities.value = resp.data;
   } catch (err: any) {
     console.error("fetchCities error:", err);

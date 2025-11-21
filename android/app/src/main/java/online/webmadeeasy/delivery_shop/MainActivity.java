@@ -1,4 +1,4 @@
-package com.yourapp.id;
+package online.webmadeeasy.delivery_shop;
 
 import com.getcapacitor.BridgeActivity;
 
