@@ -18,8 +18,19 @@ import {
   SelectLabel,
   SelectGroup,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "vue-sonner";
 import api from "@/api/axios";
+
+const openWorkInstructions = ref(false);
 
 const { isOnline, goOnline, goOffline } = useDriverTracker();
 const authStore = useAuthStore();
@@ -59,13 +70,9 @@ onMounted(async () => {
     authStore.logout();
     router.push("/");
   }
-  fetchCities();
+  await fetchCities();
+  openWorkInstructions.value = true;
 });
-
-watch(
-  () => city.value,
-  () => handleChangeCity
-);
 </script>
 
 <template>
@@ -107,23 +114,44 @@ watch(
       </Button>
     </div>
   </header>
-  <Select v-model="city">
-    <SelectTrigger class="w-full">
-      <SelectValue placeholder="اختر المدينة" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectGroup>
-        <SelectLabel class="text-gray-400">المدينة</SelectLabel>
-        <SelectItem
-          v-for="city in cities"
-          :key="city.city_id"
-          :value="city.city_name"
+  <div class="changeCity">
+    <Select v-model="city">
+      <SelectTrigger class="w-full">
+        <SelectValue placeholder="اختر المدينة" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectLabel class="text-gray-400">المدينة</SelectLabel>
+          <SelectItem
+            v-for="city in cities"
+            :key="city.city_id"
+            :value="city.city_name"
+          >
+            {{ city.city_name }}
+          </SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+    <Button @click="handleChangeCity">تغير المدينة</Button>
+  </div>
+  <Dialog v-model:open="openWorkInstructions">
+    <DialogContent class="sm:max-w-[500px]">
+      <DialogHeader>
+        <DialogTitle>إرشادات العمل</DialogTitle>
+      </DialogHeader>
+
+      <p>1- الحفاظ على المظهر العام وأسلوب التعامل اللائق</p>
+      <p>2- ممنوع لُبس الشِّبشب مطلقًا</p>
+      <p>3- الالتزام بالباوتش أو صندوق التوصيل</p>
+      <p>4- الحفاظ على نظافة العربة أو الموتوسيكل والتأكد من جاهزيته يوميًا</p>
+
+      <DialogFooter>
+        <Button variant="outline" @click="openWorkInstructions = false"
+          >موافق</Button
         >
-          {{ city.city_name }}
-        </SelectItem>
-      </SelectGroup>
-    </SelectContent>
-  </Select>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
   <Tabs
     v-model="activeTab"
     dir="rtl"
