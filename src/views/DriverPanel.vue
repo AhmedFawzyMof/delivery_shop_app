@@ -20,12 +20,10 @@ import {
 } from "@/components/ui/select";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogFooter,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "vue-sonner";
 import api from "@/api/axios";
@@ -114,7 +112,7 @@ onMounted(async () => {
       </Button>
     </div>
   </header>
-  <div class="changeCity">
+  <div class="flex items-center p-6 gap-2">
     <Select v-model="city">
       <SelectTrigger class="w-full">
         <SelectValue placeholder="اختر المدينة" />
@@ -135,7 +133,7 @@ onMounted(async () => {
     <Button @click="handleChangeCity">تغير المدينة</Button>
   </div>
   <Dialog v-model:open="openWorkInstructions">
-    <DialogContent class="sm:max-w-[500px]">
+    <DialogContent class="sm:max-w-[500px]" dir="rtl">
       <DialogHeader>
         <DialogTitle>إرشادات العمل</DialogTitle>
       </DialogHeader>
@@ -146,9 +144,9 @@ onMounted(async () => {
       <p>4- الحفاظ على نظافة العربة أو الموتوسيكل والتأكد من جاهزيته يوميًا</p>
 
       <DialogFooter>
-        <Button variant="outline" @click="openWorkInstructions = false"
-          >موافق</Button
-        >
+        <Button variant="outline" @click="openWorkInstructions = false">
+          موافق
+        </Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

@@ -4,7 +4,6 @@ import { Card, CardHeader, CardContent, CardTitle } from "./ui/card";
 import { useAuthStore } from "@/stores/auth";
 import DriverOrders from "@/components/DriverOrders.vue";
 import { computed, onMounted, ref, watch } from "vue";
-import { httpRequest } from "@/utils/http";
 import { useOrdersStore } from "@/stores/orders";
 import api from "@/api/axios";
 

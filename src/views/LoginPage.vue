@@ -26,7 +26,6 @@ import { useAuthStore } from "@/stores/auth";
 const id_number = ref("");
 const password = ref("");
 const shift = ref(8);
-const imageBase64 = ref<string | null>(null);
 const loading = ref(false);
 
 const router = useRouter();
@@ -49,7 +48,6 @@ async function handleLogin() {
   try {
     loading.value = true;
 
-    // Take photo
     const photo = await Camera.getPhoto({
       quality: 40,
       resultType: CameraResultType.Uri,
@@ -163,14 +161,6 @@ function goToRegister() {
             <span>تسجيل الدخول</span>
           </Button>
         </form>
-
-        <div v-if="imageBase64" class="mt-4 text-center">
-          <p>الصورة اللي اتصورت:</p>
-          <img
-            :src="imageBase64"
-            class="rounded-lg mt-2 w-40 h-40 mx-auto object-cover"
-          />
-        </div>
 
         <div class="mt-4 text-center text-sm">
           معندكش حساب؟

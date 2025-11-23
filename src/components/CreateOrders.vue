@@ -22,11 +22,11 @@ const receiptImage = ref<File | null>(null);
 const receiptPreview = ref<string | null>(null);
 const loading = ref(false);
 const newOrder = ref({
-  customerName: "",
-  customerPhone: "",
-  customerAddress: "",
+  // customerName: "",
+  // customerPhone: "",
+  // customerAddress: "",
   totalAmount: 0,
-  notes: "",
+  // notes: "",
   deliveryCost: 0,
 });
 
@@ -63,11 +63,11 @@ const handleCreateOrder = async () => {
   }
 
   const payload = {
-    customerName: newOrder.value.customerName,
-    customerPhone: newOrder.value.customerPhone,
-    customerAddress: newOrder.value.customerAddress,
+    // customerName: newOrder.value.customerName,
+    // customerPhone: newOrder.value.customerPhone,
+    // customerAddress: newOrder.value.customerAddress,
     totalAmount: newOrder.value.totalAmount,
-    notes: newOrder.value.notes,
+    // notes: newOrder.value.notes,
     deliveryCost: newOrder.value.deliveryCost,
     receiptImage: base64Image,
   };
@@ -81,11 +81,11 @@ const handleCreateOrder = async () => {
     toast.success("تم إنشاء الطلب بنجاح");
 
     newOrder.value = {
-      customerName: "",
-      customerPhone: "",
-      customerAddress: "",
+      // customerName: "",
+      // customerPhone: "",
+      // customerAddress: "",
       totalAmount: 0,
-      notes: "",
+      // notes: "",
       deliveryCost: 0,
     };
     receiptImage.value = null;
@@ -100,45 +100,45 @@ const handleCreateOrder = async () => {
 };
 
 const applyUserData = (user: any) => {
-  newOrder.value.customerName = user.user_name;
-  newOrder.value.customerAddress = user.user_address;
-  newOrder.value.customerPhone = user.user_phone;
+  // newOrder.value.customerName = user.user_name;
+  // newOrder.value.customerAddress = user.user_address;
+  // newOrder.value.customerPhone = user.user_phone;
   showDropdown.value = false;
 };
 
-watch(
-  () => newOrder.value.customerPhone,
-  (phone) => {
-    if (searchTimeout.value) clearTimeout(searchTimeout.value);
+// watch(
+//   () => newOrder.value.customerPhone,
+//   (phone) => {
+//     if (searchTimeout.value) clearTimeout(searchTimeout.value);
 
-    if (!phone || phone.length < 5) {
-      foundUsers.value = [];
-      showDropdown.value = false;
-      return;
-    }
+//     if (!phone || phone.length < 5) {
+//       foundUsers.value = [];
+//       showDropdown.value = false;
+//       return;
+//     }
 
-    searchTimeout.value = window.setTimeout(async () => {
-      try {
-        searchLoading.value = true;
-        showDropdown.value = true;
-        const res = await httpRequest<any>({
-          url: `/api/users?search=${phone}&page=1`,
-          method: "GET",
-        });
+//     searchTimeout.value = window.setTimeout(async () => {
+//       try {
+//         searchLoading.value = true;
+//         showDropdown.value = true;
+//         const res = await httpRequest<any>({
+//           url: `/api/users?search=${phone}&page=1`,
+//           method: "GET",
+//         });
 
-        foundUsers.value = res.users || [];
-        console.log(foundUsers.value);
-        showDropdown.value = true;
-      } catch (err) {
-        console.error("Search error:", err);
-        foundUsers.value = [];
-        showDropdown.value = false;
-      } finally {
-        searchLoading.value = false;
-      }
-    }, 400);
-  }
-);
+//         foundUsers.value = res.users || [];
+//         console.log(foundUsers.value);
+//         showDropdown.value = true;
+//       } catch (err) {
+//         console.error("Search error:", err);
+//         foundUsers.value = [];
+//         showDropdown.value = false;
+//       } finally {
+//         searchLoading.value = false;
+//       }
+//     }, 400);
+//   }
+// );
 
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
@@ -174,7 +174,7 @@ watch(isCreateOrderOpen, (isOpen) => {
       </DialogHeader>
 
       <div dir="rtl" class="grid gap-4 py-4 relative">
-        <div class="grid grid-cols-2 gap-4">
+        <!-- <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <Label for="customerName">اسم العميل</Label>
             <Input
@@ -226,9 +226,9 @@ watch(isCreateOrderOpen, (isOpen) => {
               </div>
             </div>
           </div>
-        </div>
+        </div> -->
 
-        <div class="space-y-2">
+        <!-- <div class="space-y-2">
           <Label for="customerAddress">عنوان التوصيل</Label>
           <Textarea
             id="customerAddress"
@@ -236,7 +236,7 @@ watch(isCreateOrderOpen, (isOpen) => {
             placeholder="اكتب العنوان بالكامل"
             rows="2"
           />
-        </div>
+        </div> -->
 
         <div class="space-y-2">
           <Label for="receiptImage">صورة الفاتورة (اختياري)</Label>
@@ -266,14 +266,14 @@ watch(isCreateOrderOpen, (isOpen) => {
               placeholder="0.00"
             />
           </div>
-          <div class="space-y-2">
+          <!-- <div class="space-y-2">
             <Label for="notes">ملاحظات (اختياري)</Label>
             <Input
               id="notes"
               v-model="newOrder.notes"
               placeholder="تعليمات خاصة"
             />
-          </div>
+          </div> -->
         </div>
 
         <div class="flex flex-col space-y-2">
@@ -300,14 +300,7 @@ watch(isCreateOrderOpen, (isOpen) => {
         <Button
           class="bg-primary hover:bg-primary/90"
           @click="handleCreateOrder"
-          :disabled="
-            !newOrder.customerName ||
-            !newOrder.customerPhone ||
-            !newOrder.customerAddress ||
-            !newOrder.totalAmount ||
-            !newOrder.deliveryCost ||
-            loading
-          "
+          :disabled="!newOrder.totalAmount || !newOrder.deliveryCost || loading"
         >
           <Loader v-if="loading" class="animate-spin" />
           <span v-else>إنشاء الطلب</span>
