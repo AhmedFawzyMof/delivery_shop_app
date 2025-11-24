@@ -13,9 +13,19 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader, Plus } from "lucide-vue-next";
-import { ref, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { httpRequest } from "@/utils/http";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectLabel,
+} from "@/components/ui/select";
+import api from "@/api/axios";
 
 const isCreateOrderOpen = ref(false);
 const receiptImage = ref<File | null>(null);
@@ -28,14 +38,25 @@ const newOrder = ref({
   totalAmount: 0,
   // notes: "",
   deliveryCost: 0,
+  order_city: "",
 });
 
-const searchTimeout = ref<number | null>(null);
-const searchLoading = ref(false);
-const foundUsers = ref<any[]>([]);
+// const searchTimeout = ref<number | null>(null);
+// const searchLoading = ref(false);
+// const foundUsers = ref<any[]>([]);
 const showDropdown = ref(false);
 const phoneInputRef = ref<HTMLElement | null>(null);
+const cities = ref<any>([]);
 
+async function fetchCities() {
+  try {
+    const resp = await api.get("cities");
+    cities.value = resp.data;
+  } catch (err: any) {
+    console.error("fetchCities error:", err);
+    toast.error("فشل تحميل المدن");
+  }
+}
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -70,6 +91,7 @@ const handleCreateOrder = async () => {
     // notes: newOrder.value.notes,
     deliveryCost: newOrder.value.deliveryCost,
     receiptImage: base64Image,
+    order_city: newOrder.value.order_city,
   };
 
   try {
@@ -87,6 +109,7 @@ const handleCreateOrder = async () => {
       totalAmount: 0,
       // notes: "",
       deliveryCost: 0,
+      order_city: "",
     };
     receiptImage.value = null;
     receiptPreview.value = null;
@@ -146,6 +169,10 @@ const handleClickOutside = (event: MouseEvent) => {
     showDropdown.value = false;
   }
 };
+
+onMounted(async () => {
+  await fetchCities();
+});
 
 watch(isCreateOrderOpen, (isOpen) => {
   if (isOpen) {
@@ -266,14 +293,26 @@ watch(isCreateOrderOpen, (isOpen) => {
               placeholder="0.00"
             />
           </div>
-          <!-- <div class="space-y-2">
-            <Label for="notes">ملاحظات (اختياري)</Label>
-            <Input
-              id="notes"
-              v-model="newOrder.notes"
-              placeholder="تعليمات خاصة"
-            />
-          </div> -->
+          <div class="space-y-2">
+            <Label>المدينة</Label>
+            <Select v-model="newOrder.order_city" required>
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="اختر المدينة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel class="text-gray-400">المدينة</SelectLabel>
+                  <SelectItem
+                    v-for="city in cities"
+                    :key="city.city_id"
+                    :value="city.city_name"
+                  >
+                    {{ city.city_name }}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div class="flex flex-col space-y-2">
