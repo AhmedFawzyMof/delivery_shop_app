@@ -108,6 +108,13 @@ function goToRegister() {
       <ArrowLeft class="w-4 h-4 md:w-6 md:h-6" />
       <p>الصفحة الرئيسية</p>
     </router-link>
+    <router-link
+      to="/restaurant"
+      class="flex items-center gap-2 text-black mb-2 text-lg md:text-2xl absolute top-4 right-4 hover:underline"
+    >
+      <p>المطعم</p>
+      <ArrowRight class="w-4 h-4 md:w-6 md:h-6" />
+    </router-link>
 
     <Card class="w-full max-w-md">
       <CardHeader class="text-center">
