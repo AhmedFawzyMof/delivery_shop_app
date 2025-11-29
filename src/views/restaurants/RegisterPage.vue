@@ -2,7 +2,6 @@
 import { ref, onMounted, watch } from "vue";
 import { toast } from "vue-sonner";
 import { useRouter } from "vue-router";
-import { CapacitorHttp } from "@capacitor/core";
 import { useAuthStore } from "@/stores/auth";
 import {
   Card,
@@ -24,98 +23,101 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import { Loader } from "lucide-vue-next";
+import { Geolocation } from "@capacitor/geolocation";
 import Textarea from "@/components/ui/textarea/Textarea.vue";
-import baseUrl from "@/utils/baseUrl";
+import api from "@/api/axios";
+
 const router = useRouter();
 const authStore = useAuthStore();
 
 const loading = ref(false);
-
 const cities = ref<{ city_id: number; city_name: string }[]>([]);
+
+const fetchingLocation = ref(false);
+
+async function getLocation() {
+  fetchingLocation.value = true;
+
+  try {
+    const perm = await Geolocation.requestPermissions();
+
+    if (perm.location !== "granted") {
+      toast.error("يجب السماح باستخدام الموقع");
+      fetchingLocation.value = false;
+      return;
+    }
+
+    const pos = await Geolocation.getCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: 10000,
+    });
+
+    const lat = pos.coords.latitude.toFixed(6);
+    const lng = pos.coords.longitude.toFixed(6);
+
+    formData.value.location = `${lat}, ${lng}`;
+    toast.success("تم جلب موقعك بنجاح");
+  } catch (err) {
+    console.error(err);
+    toast.error("فشل في الحصول على الموقع");
+  } finally {
+    fetchingLocation.value = false;
+  }
+}
 
 const formData = ref({
   restaurant_name: "",
-  city: "",
+  restaurant_city: "",
   address: "",
   commercial_register: "",
+  location: "",
+  password: "",
   logo: null as File | null,
-  logo_base64: "",
 });
 
 const logoPhotoPreview = ref<string | null>(null);
 
 async function fetchCities() {
   try {
-    const resp = await CapacitorHttp.get({
-      url: `${baseUrl}/api/cities`,
-      webFetchExtra: { credentials: "include" },
-    });
-    cities.value = resp.data;
-  } catch (err: any) {
-    console.error("fetchCities error:", err);
+    const res = await api.get(`/cities`);
+    cities.value = res.data;
+  } catch (err) {
     toast.error("فشل تحميل المدن");
   }
 }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-    reader.readAsDataURL(file);
-  });
-}
-
-async function handleFileUpload(event: Event) {
+function handleFileUpload(event: Event) {
   const target = event.target as HTMLInputElement;
   if (target.files && target.files[0]) {
     const file = target.files[0];
     formData.value.logo = file;
-
-    try {
-      const base64 = await fileToBase64(file);
-      formData.value.logo_base64 = base64;
-      logoPhotoPreview.value = URL.createObjectURL(
-        new Blob([base64.replace(/^data:image\/\w+;base64,/, "")], {
-          type: "image/jpeg",
-        })
-      );
-    } catch (error) {
-      console.error("Base64 conversion error:", error);
-      toast.error("فشل في قراءة الصورة");
-    }
-  } else {
-    formData.value.logo = null;
-    formData.value.logo_base64 = "";
-    logoPhotoPreview.value = null;
+    logoPhotoPreview.value = URL.createObjectURL(file);
   }
 }
 
 async function handleRegister() {
   loading.value = true;
   try {
-    const payload = {
-      restaurant_name: formData.value.restaurant_name,
-      city: formData.value.city,
-      address: formData.value.address,
-      commercial_register: formData.value.commercial_register,
-      logo: formData.value.logo_base64,
-    };
+    const fd = new FormData();
+    fd.append("restaurant_name", formData.value.restaurant_name);
+    fd.append("restaurant_city", formData.value.restaurant_city);
+    fd.append("address", formData.value.address);
+    fd.append("commercial_register", formData.value.commercial_register);
+    fd.append("location", formData.value.location);
+    fd.append("password", formData.value.password);
+    if (formData.value.logo) {
+      fd.append("logo", formData.value.logo);
+    }
 
-    const resp = await CapacitorHttp.post({
-      url: `${baseUrl}/api/restaurants/register`,
-      data: payload,
-      headers: { "Content-Type": "application/json" },
-    });
+    const res = await api.post("/restaurants/register", fd);
 
-    if (resp.status < 200 || resp.status >= 300) {
+    if (res.status < 200 || res.status >= 300) {
       throw new Error("خطأ في إرسال بيانات التسجيل");
     }
 
     toast.success("تم تسجيل حسابك بنجاح!");
     router.push("/");
   } catch (err: any) {
-    console.error("handleRegister error:", err);
     toast.error(err.message || "فشل تسجيل الحساب.");
   } finally {
     loading.value = false;
@@ -127,21 +129,16 @@ function goToLogin() {
 }
 
 onMounted(async () => {
-  await authStore.checkRestaurantSession();
-  await authStore.checkSession();
+  await authStore.init();
   if (authStore.isAuthenticated) {
-    if (authStore.type === "driver") {
-      router.push("/driver-panel");
-    } else if (authStore.type === "restaurant") {
-      router.push("/restaurant/dashboard");
-    }
+    router.push("/restaurant/dashboard");
   }
   fetchCities();
 });
 
 watch(
   () => formData.value.logo,
-  (file, oldFile) => {
+  (_file, oldFile) => {
     if (logoPhotoPreview.value && oldFile) {
       URL.revokeObjectURL(logoPhotoPreview.value);
     }
@@ -165,7 +162,7 @@ watch(
             <Input
               id="restaurant_name"
               type="text"
-              placeholder="أحمد فوزي سيد مفتاح"
+              placeholder="Pizza place"
               v-model="formData.restaurant_name"
               required
             />
@@ -181,6 +178,37 @@ watch(
             />
           </div>
           <div class="grid gap-2">
+            <Label>الإحداثيات (Location)</Label>
+            <div class="flex items-center gap-2">
+              <Input
+                type="text"
+                v-model="formData.location"
+                readonly
+                placeholder="اضغط زر تحديد الموقع"
+                class="flex-1"
+              />
+
+              <Button
+                type="button"
+                @click="getLocation"
+                :disabled="fetchingLocation"
+              >
+                <Loader v-if="fetchingLocation" class="w-4 h-4 animate-spin" />
+                <span v-else>حدد موقعي</span>
+              </Button>
+            </div>
+          </div>
+
+          <div class="grid gap-2">
+            <Label>كلمة المرور</Label>
+            <Input
+              type="password"
+              placeholder="********"
+              v-model="formData.password"
+              required
+            />
+          </div>
+          <div class="grid gap-2">
             <Label for="commercial_register">رقم السجل التجاري</Label>
             <Input
               id="commercial_register"
@@ -192,7 +220,7 @@ watch(
           </div>
           <div class="grid gap-2">
             <Label for="city">المدينة</Label>
-            <Select v-model="formData.city" required>
+            <Select v-model="formData.restaurant_city" required>
               <SelectTrigger class="w-full">
                 <SelectValue placeholder="اختر المدينة" />
               </SelectTrigger>

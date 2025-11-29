@@ -1,203 +1,246 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { onMounted, ref } from "vue";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import api from "@/api/axios";
 import { toast } from "vue-sonner";
 import { useRouter } from "vue-router";
-import { CapacitorHttp } from "@capacitor/core";
 import { useAuthStore } from "@/stores/auth";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectLabel,
-} from "@/components/ui/select";
-import { Loader } from "lucide-vue-next";
-import api from "@/api/axios";
 
+const loading = ref(false);
+const cities = ref<{ city_id: number; city_name: string }[]>([]);
 const router = useRouter();
 const authStore = useAuthStore();
 
-const loading = ref(false);
+type DriverForm = {
+  full_name: string;
+  phone: string;
+  city: string;
+  id_number: string;
+  driver_type: string;
+  plate_number: string;
+  password: string;
+  first_license_photo: File | null;
+  second_license_photo: File | null;
+  third_license_photo: File | null;
+  fourth_license_photo: File | null;
+};
 
-const cities = ref<{ city_id: number; city_name: string }[]>([]);
+type PhotoField =
+  | "first_license_photo"
+  | "second_license_photo"
+  | "third_license_photo"
+  | "fourth_license_photo";
 
-const formData = ref({
+const form = ref<DriverForm>({
   full_name: "",
   phone: "",
   city: "",
-  type: "",
   id_number: "",
+  driver_type: "",
   plate_number: "",
+  password: "",
+  first_license_photo: null as File | null,
+  second_license_photo: null as File | null,
+  third_license_photo: null as File | null,
+  fourth_license_photo: null as File | null,
 });
 
 async function fetchCities() {
   try {
-    const resp = await api.get("cities");
-    cities.value = resp.data;
-  } catch (err: any) {
-    console.error("fetchCities error:", err);
+    const res = await api.get(`/cities`);
+    cities.value = res.data;
+  } catch (err) {
     toast.error("فشل تحميل المدن");
   }
 }
 
-async function handleRegister() {
+const handleFile = (e: Event, field: PhotoField) => {
+  const file = (e.target as HTMLInputElement).files?.[0] || null;
+  form.value[field] = file;
+};
+
+const handleSubmit = async () => {
   loading.value = true;
   try {
-    const payload = {
-      full_name: formData.value.full_name,
-      phone: formData.value.phone,
-      city: formData.value.city,
-      type: formData.value.type,
-      id_number: formData.value.id_number,
-      plate_number: formData.value.plate_number,
-    };
+    const fd = new FormData();
 
-    const resp = await api.post("drivers/register", payload);
+    fd.append("driver_id", Date.now().toString());
 
-    if (resp.status < 200 || resp.status >= 300) {
-      throw new Error("خطأ في إرسال بيانات التسجيل");
+    for (const key in form.value) {
+      const v = (form.value as any)[key];
+      if (v && typeof v !== "object") fd.append(key, v);
     }
 
-    toast.success("تم تسجيل حسابك بنجاح!");
-    router.push("/");
-  } catch (err: any) {
-    console.error("handleRegister error:", err);
-    toast.error(err.message || "فشل تسجيل الحساب.");
+    if (form.value.first_license_photo)
+      fd.append("first_license_photo", form.value.first_license_photo);
+    if (form.value.second_license_photo)
+      fd.append("second_license_photo", form.value.second_license_photo);
+    if (form.value.third_license_photo)
+      fd.append("third_license_photo", form.value.third_license_photo);
+    if (form.value.fourth_license_photo)
+      fd.append("fourth_license_photo", form.value.fourth_license_photo);
+
+    const response = await api.post(`/driver/register`, fd);
+
+    if (response.data.success) {
+      toast.success("تم التحديث بنجاح");
+    }
+  } catch (error) {
+    console.log(error);
+    loading.value = false;
+    toast.error("لقد حدث خطأ ما");
   } finally {
     loading.value = false;
   }
-}
-
-function goToLogin() {
-  router.push("/login");
-}
+};
 
 onMounted(async () => {
-  await authStore.checkSession();
-  await authStore.checkRestaurantSession();
+  await authStore.init();
   if (authStore.isAuthenticated) {
-    if (authStore.type === "driver") {
-      router.push("/driver-panel");
-    } else if (authStore.type === "restaurant") {
-      router.push("/restaurant/dashboard");
-    }
+    router.push("/restaurant/dashboard");
   }
   fetchCities();
 });
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-    <Card class="w-full max-w-md">
-      <CardHeader class="text-center">
-        <CardTitle class="text-2xl">تسجيل حساب</CardTitle>
-        <CardDescription
-          >اعمل حساب جديد علشان تبدأ تستخدم التطبيق</CardDescription
-        >
-      </CardHeader>
-      <CardContent>
-        <form @submit.prevent="handleRegister" class="space-y-4">
-          <div class="grid gap-2">
-            <Label for="full_name">الاسم بالكامل</Label>
-            <Input
-              id="full_name"
-              type="text"
-              placeholder="أحمد فوزي سيد مفتاح"
-              v-model="formData.full_name"
-              required
-            />
-          </div>
-          <div class="grid gap-2">
-            <Label for="phone">رقم الموبايل</Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="01212158465"
-              v-model="formData.phone"
-              required
-            />
-          </div>
-          <div class="grid gap-2">
-            <Label for="city">المدينة</Label>
-            <Select v-model="formData.city" required>
-              <SelectTrigger class="w-full">
-                <SelectValue placeholder="اختر المدينة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel class="text-gray-400">المدينة</SelectLabel>
-                  <SelectItem
-                    v-for="city in cities"
-                    :key="city.city_id"
-                    :value="city.city_name"
-                  >
-                    {{ city.city_name }}
-                  </SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div class="grid gap-2">
-            <Label for="type">النوع وسيلة النقل</Label>
-            <Select v-model="formData.type" required>
-              <SelectTrigger class="w-full">
-                <SelectValue placeholder="اختر نوعك" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel class="text-gray-400">وسيلة نقل</SelectLabel>
-                  <SelectItem value="موتوسيكل">موتوسيكل</SelectItem>
-                  <SelectItem value="عجلة">عجلة</SelectItem>
-                  <SelectItem value="سيارة">سيارة</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div class="grid gap-2">
-            <Label for="id_number">رقم البطاقة</Label>
-            <Input
-              id="id_number"
-              type="text"
-              placeholder="123456789"
-              v-model="formData.id_number"
-              required
-            />
-          </div>
-          <div class="grid gap-2">
-            <Label for="plate_number">رقم العربية</Label>
-            <Input
-              id="plate_number"
-              type="text"
-              placeholder="س ر ط - 123"
-              v-model="formData.plate_number"
-              required
-            />
-          </div>
+  <form
+    @submit.prevent
+    class="min-h-screen bg-background p-5 flex flex-col gap-6"
+  >
+    <h1 class="text-2xl font-bold text-foreground text-center">
+      إنشاء حساب سائق
+    </h1>
 
-          <Button type="submit" class="w-full" :disabled="loading">
-            <Loader v-if="loading" class="w-4 h-4 animate-spin" />
-            <span v-else="loading"> تسجيل </span>
-          </Button>
-        </form>
-        <div class="mt-4 text-center text-sm">
-          عندك حساب قبل كده؟
-          <Button variant="link" @click="goToLogin" class="p-0 h-auto">
-            سجل دخول
-          </Button>
+    <div
+      class="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm"
+    >
+      <h2 class="font-semibold text-foreground text-sm">المعلومات الشخصية</h2>
+
+      <div class="space-y-1">
+        <Label>الاسم الكامل</Label>
+        <Input v-model="form.full_name" required />
+      </div>
+
+      <div class="space-y-1">
+        <Label>رقم الهاتف</Label>
+        <Input v-model="form.phone" required type="tel" />
+      </div>
+
+      <div class="space-y-1">
+        <Label>المدينة</Label>
+        <select
+          v-model="form.city"
+          required
+          class="w-full h-11 border border-border rounded-md px-3 bg-background text-sm"
+        >
+          <option disabled value="">اختر مدينة</option>
+          <option v-for="city in cities" :key="city.city_id">
+            {{ city.city_name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="space-y-1">
+        <Label>الرقم القومي</Label>
+        <Input v-model="form.id_number" required />
+      </div>
+    </div>
+
+    <div
+      class="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm"
+    >
+      <h2 class="font-semibold text-foreground text-sm">بيانات المركبة</h2>
+
+      <div class="space-y-1">
+        <Label>نوع السائق</Label>
+        <select
+          v-model="form.driver_type"
+          required
+          class="w-full h-11 border border-border rounded-md px-3 bg-background text-sm"
+        >
+          <option disabled value="">اختر نوع السائق</option>
+          <option value="موتوسيكل">موتوسيكل</option>
+          <option value="عجلة">عجلة</option>
+          <option value="سيارة">سيارة</option>
+        </select>
+      </div>
+
+      <div class="space-y-1">
+        <Label>رقم اللوحة</Label>
+        <Input v-model="form.plate_number" required class="font-mono" />
+      </div>
+    </div>
+
+    <div
+      class="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm"
+    >
+      <h2 class="font-semibold text-foreground text-sm">
+        البيانات الخاصة بالحساب
+      </h2>
+
+      <div class="space-y-1">
+        <Label>كلمة المرور</Label>
+        <Input v-model="form.password" required type="password" />
+      </div>
+    </div>
+
+    <div
+      class="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm"
+    >
+      <h2 class="font-semibold text-foreground text-sm">صور الرخص</h2>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <Label>الصورة 1</Label>
+          <input
+            type="file"
+            required
+            class="w-full border border-border rounded-md px-3 py-2 text-sm"
+            @change="(e) => handleFile(e, 'first_license_photo')"
+          />
         </div>
-      </CardContent>
-    </Card>
-  </div>
+
+        <div v-if="form.driver_type !== 'عجلة'" class="space-y-1">
+          <Label>الصورة 2</Label>
+          <input
+            type="file"
+            required
+            class="w-full border border-border rounded-md px-3 py-2 text-sm"
+            @change="(e) => handleFile(e, 'second_license_photo')"
+          />
+        </div>
+
+        <div v-if="form.driver_type !== 'عجلة'" class="space-y-1">
+          <Label>الصورة 3</Label>
+          <input
+            type="file"
+            required
+            class="w-full border border-border rounded-md px-3 py-2 text-sm"
+            @change="(e) => handleFile(e, 'third_license_photo')"
+          />
+        </div>
+
+        <div v-if="form.driver_type !== 'عجلة'" class="space-y-1">
+          <Label>الصورة 4</Label>
+          <input
+            type="file"
+            required
+            class="w-full border border-border rounded-md px-3 py-2 text-sm"
+            @change="(e) => handleFile(e, 'fourth_license_photo')"
+          />
+        </div>
+      </div>
+    </div>
+
+    <Button
+      class="w-full h-11 text-sm font-bold"
+      :disabled="loading"
+      @click="handleSubmit"
+    >
+      {{ loading ? "جاري التسجيل..." : "تسجيل الحساب" }}
+    </Button>
+  </form>
 </template>

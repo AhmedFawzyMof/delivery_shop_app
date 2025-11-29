@@ -23,9 +23,10 @@ import { useRouter } from "vue-router";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { useAuthStore } from "@/stores/auth";
 
-const id_number = ref("");
+const phone = ref("");
 const password = ref("");
 const shift = ref(8);
+const isFreelancer = ref("no"); // "yes" or "no"
 const loading = ref(false);
 
 const router = useRouter();
@@ -65,10 +66,16 @@ async function handleLogin() {
     const selfieBlob = await response.blob();
 
     const formData = new FormData();
-    formData.append("id_number", id_number.value);
+    formData.append("phone", phone.value);
     formData.append("password", password.value);
-    formData.append("shift", shift.value.toString());
     formData.append("selfie", selfieBlob, "selfie.jpg");
+
+    if (isFreelancer.value === "yes") {
+      formData.append("shift", shift.value.toString());
+      formData.append("is_freelancer", "1");
+    } else {
+      formData.append("is_freelancer", "0");
+    }
 
     const success = await authStore.login(formData);
 
@@ -101,13 +108,7 @@ function goToRegister() {
       <ArrowLeft class="w-4 h-4 md:w-6 md:h-6" />
       <p>الصفحة الرئيسية</p>
     </router-link>
-    <router-link
-      to="/restaurant"
-      class="flex items-center gap-2 text-black mb-2 text-lg md:text-2xl absolute top-4 right-4 hover:underline"
-    >
-      <p>المطاعم</p>
-      <ArrowRight class="w-4 h-4 md:w-6 md:h-6" />
-    </router-link>
+
     <Card class="w-full max-w-md">
       <CardHeader class="text-center">
         <CardTitle class="text-2xl font-bold">تسجيل الدخول الطيار</CardTitle>
@@ -119,17 +120,30 @@ function goToRegister() {
       <CardContent>
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div class="grid gap-2">
-            <Label for="id_number">رقم البطاقة</Label>
+            <Label for="phone">رقم الهاتف</Label>
             <Input
-              id="id_number"
+              id="phone"
               type="text"
-              placeholder="اكتب رقم البطاقة"
-              v-model="id_number"
+              placeholder="اكتب رقم الهاتف"
+              v-model="phone"
               required
             />
           </div>
 
           <div class="grid gap-2">
+            <Label>نوع السائق</Label>
+            <Select v-model="isFreelancer">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="اختار النوع" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no">سائق عادي (شيفت ثابت)</SelectItem>
+                <SelectItem value="yes">مستقل (يحدد الوردية)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div v-if="isFreelancer === 'yes'" class="grid gap-2">
             <Label for="shift">الوردية</Label>
             <Select v-model="shift">
               <SelectTrigger class="w-full">
@@ -137,9 +151,8 @@ function goToRegister() {
               </SelectTrigger>
               <SelectContent>
                 <SelectLabel class="text-gray-400">الوردية</SelectLabel>
-                <SelectItem :value="2">وردية ٢ ساعة</SelectItem>
-                <SelectItem :value="4">وردية ٤ ساعات</SelectItem>
                 <SelectItem :value="8">وردية ٨ ساعات</SelectItem>
+                <SelectItem :value="10">وردية ١٠ ساعات</SelectItem>
                 <SelectItem :value="12">وردية ١٢ ساعة</SelectItem>
               </SelectContent>
             </Select>

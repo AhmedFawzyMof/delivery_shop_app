@@ -7,7 +7,7 @@ import CustomPagination from "./CustomPagination.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Clock, Package, Truck, Loader2, CheckCircle } from "lucide-vue-next";
-import { Badge } from "@/components/ui/badge";
+
 import {
   Card,
   CardHeader,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import Separator from "./ui/separator/Separator.vue";
 import baseUrl from "@/utils/baseUrl";
+import api from "@/api/axios";
 
 const loading = ref(false);
 const fromDate = ref(new Date().toISOString().split("T")[0]);
@@ -37,17 +38,14 @@ const totalPages = computed(() =>
 
 async function getOrderHistory() {
   try {
-    const res = await httpRequest<{ orders: any; earnings: any }>({
-      url: `/api/driver/${authStore.driver?.driver_id}?history=true&from=${fromDate.value}&to=${toDate.value}&page=${currentPage.value}`,
-      method: "GET",
-    });
+    const res = await api.get(
+      `/api/driver/${authStore.driver?.driver_id}?history=true&from=${fromDate.value}&to=${toDate.value}&page=${currentPage.value}`
+    );
 
-    console.log(res);
-
-    orders.value = res.orders;
-    deliveryCost.value = res.earnings.delivery_cost;
-    sumOfOrders.value = res.earnings.sum_of_orders;
-    sumOfOrderBasedDate.value = res.earnings.sum_of_orders_based_on_date;
+    orders.value = res.data.orders;
+    deliveryCost.value = res.data.earnings.delivery_cost;
+    sumOfOrders.value = res.data.earnings.sum_of_orders;
+    sumOfOrderBasedDate.value = res.data.earnings.sum_of_orders_based_on_date;
   } catch (err) {
     if (err instanceof Error) toast.error(err.message);
   }
