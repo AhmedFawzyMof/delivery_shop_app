@@ -262,12 +262,26 @@ export function useDriverTracker() {
     };
   }
 
-  function reconnectWebSocket() {
-    console.log("Attempting to reconnect...");
-    setTimeout(() => {
-      if (isOnline.value) connectWebSocket();
-    }, 5000);
-  }
+  // function reconnectWebSocket() {
+  //   console.log("Attempting to reconnect...");
+  //   setTimeout(() => {
+  //     if (isOnline.value) connectWebSocket();
+  //   }, 5000);
+  // }
+
+  const handleChangeCity = (newCity: string) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    ws.send(
+      JSON.stringify({
+        type: "change_city",
+        driver_id: driver?.driver_id,
+        driver_city: newCity,
+      })
+    );
+
+    authStore.changeCity(newCity);
+  };
 
   function sendUpdateOrdersWs(order_id: number, restaurant_id: number) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -398,5 +412,6 @@ export function useDriverTracker() {
     lastLocation,
     goOnline,
     goOffline,
+    handleChangeCity,
   };
 }

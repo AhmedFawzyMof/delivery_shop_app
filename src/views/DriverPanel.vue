@@ -30,7 +30,7 @@ import api from "@/api/axios";
 
 const openWorkInstructions = ref(false);
 
-const { isOnline, goOnline, goOffline } = useDriverTracker();
+const { isOnline, goOnline, goOffline, handleChangeCity } = useDriverTracker();
 const authStore = useAuthStore();
 const ordersStore = useOrdersStore();
 const router = useRouter();
@@ -38,12 +38,6 @@ const orders = computed(() => ordersStore.orders);
 const activeTab = ref("current-orders");
 const city = ref(authStore.driver?.driver_city || "");
 const cities = ref<{ city_id: number; city_name: string }[]>([]);
-
-const handleChangeCity = () => {
-  authStore.changeCity(city.value);
-  goOffline();
-  goOnline();
-};
 
 async function fetchCities() {
   try {
@@ -130,7 +124,7 @@ onMounted(async () => {
         </SelectGroup>
       </SelectContent>
     </Select>
-    <Button @click="handleChangeCity">تغير المدينة</Button>
+    <Button @click="handleChangeCity(city)">تغير المدينة</Button>
   </div>
   <Dialog v-model:open="openWorkInstructions">
     <DialogContent class="sm:max-w-[500px]" dir="rtl">
