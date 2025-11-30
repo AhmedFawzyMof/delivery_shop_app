@@ -158,13 +158,6 @@ onMounted(() => {
                     {{ order.restaurant_address }} : عنوان المطعم
                   </p>
                   <Separator class="my-2" />
-                  <p class="text-sm">{{ order.user_name }} : الاسم</p>
-                  <p class="text-sm text-muted-foreground">
-                    {{ order.user_phone }} : التليفون
-                  </p>
-                  <p class="text-sm text-muted-foreground">
-                    {{ order.user_address }} : العنوان
-                  </p>
                 </div>
               </div>
             </div>

@@ -170,14 +170,7 @@ function getStatus(status: string) {
           <Separator />
           <div class="space-y-2">
             <h4 class="font-medium">مكان التوصيل</h4>
-            <p class="text-sm">{{ props.order.user.user_name }}</p>
-            <p class="text-sm text-muted-foreground">
-              {{ props.order.user.user_address }}
-            </p>
-            <p class="text-sm text-muted-foreground flex items-center gap-1">
-              <Phone class="h-3 w-3" />
-              {{ props.order.user.user_phone }}
-            </p>
+
             <p>
               {{ props.order.notes }}
             </p>
@@ -221,13 +214,6 @@ function getStatus(status: string) {
             >
               <Navigation class="h-4 w-4 mr-2" />
               افتح الموقع
-            </Button>
-            <Button
-              variant="outline"
-              @click="callCustomer(props.order.user.user_phone)"
-            >
-              <Phone class="h-4 w-4 mr-2" />
-              كلم الزبون
             </Button>
           </div>
           <div
