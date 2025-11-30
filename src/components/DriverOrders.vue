@@ -170,9 +170,8 @@ function getStatus(status: string) {
           <Separator />
           <div class="space-y-2">
             <h4 class="font-medium">مكان التوصيل</h4>
-
             <p>
-              {{ props.order.notes }}
+              {{ props.order.order_city }}
             </p>
           </div>
         </div>

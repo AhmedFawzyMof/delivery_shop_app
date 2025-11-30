@@ -164,7 +164,7 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   function changeCity(city: string) {
-    if (driver.value && driver.value.driver_city) {
+    if (driver.value) {
       driver.value.driver_city = city;
     }
   }

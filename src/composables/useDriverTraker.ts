@@ -220,13 +220,13 @@ export function useDriverTracker() {
     ws.onclose = () => {
       console.log("❌ WS closed");
       isConnected.value = false;
-      reconnectWebSocket();
-      stopHeartbeat();
+      setTimeout(() => connectWebSocket(), 2000);
     };
 
     ws.onerror = (err) => {
       console.error("❌ WS error:", err);
       isConnected.value = false;
+      ws?.close();
     };
 
     ws.onmessage = async (event) => {
