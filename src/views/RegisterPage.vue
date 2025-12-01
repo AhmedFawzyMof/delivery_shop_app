@@ -63,33 +63,40 @@ const handleFile = (e: Event, field: PhotoField) => {
 
 const handleSubmit = async () => {
   loading.value = true;
+
   try {
     const fd = new FormData();
 
-    fd.append("driver_id", Date.now().toString());
+    const formKeys = Object.keys(form.value) as (keyof DriverForm)[];
 
-    for (const key in form.value) {
-      const v = (form.value as any)[key];
-      if (v && typeof v !== "object") fd.append(key, v);
+    for (const key of formKeys) {
+      const value = form.value[key];
+
+      if (typeof value === "string") {
+        fd.append(key, value);
+      }
     }
 
-    if (form.value.first_license_photo)
-      fd.append("first_license_photo", form.value.first_license_photo);
-    if (form.value.second_license_photo)
-      fd.append("second_license_photo", form.value.second_license_photo);
-    if (form.value.third_license_photo)
-      fd.append("third_license_photo", form.value.third_license_photo);
-    if (form.value.fourth_license_photo)
-      fd.append("fourth_license_photo", form.value.fourth_license_photo);
+    const photos: PhotoField[] = [
+      "first_license_photo",
+      "second_license_photo",
+      "third_license_photo",
+      "fourth_license_photo",
+    ];
+
+    for (const p of photos) {
+      if (form.value[p]) {
+        fd.append(p, form.value[p] as File);
+      }
+    }
 
     const response = await api.post(`/driver/register`, fd);
 
     if (response.data.success) {
-      toast.success("تم التحديث بنجاح");
+      toast.success("تم التسجيل بنجاح");
     }
-  } catch (error) {
-    console.log(error);
-    loading.value = false;
+  } catch (err) {
+    console.error(err);
     toast.error("لقد حدث خطأ ما");
   } finally {
     loading.value = false;
