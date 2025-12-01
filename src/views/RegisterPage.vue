@@ -71,10 +71,19 @@ const handleSubmit = async () => {
 
     for (const key of formKeys) {
       const value = form.value[key];
+      if (typeof value !== "string") continue;
 
-      if (typeof value === "string") {
-        fd.append(key, value);
-      }
+      const map: Record<string, string> = {
+        full_name: "driver_full_name",
+        phone: "driver_phone",
+        city: "driver_city",
+        driver_type: "driver_type",
+        id_number: "id_number",
+        plate_number: "plate_number",
+        password: "password",
+      };
+
+      fd.append(map[key] || key, value);
     }
 
     const photos: PhotoField[] = [
