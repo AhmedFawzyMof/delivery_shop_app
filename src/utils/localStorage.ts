@@ -19,7 +19,7 @@ export async function getLocalData(itemName: string) {
     return JSON.parse(localStorage.getItem(itemName) || "");
   }
 
-  (await Preferences.get({ key: "sessionToken" })).value;
+  return (await Preferences.get({ key: "sessionToken" })).value;
 }
 
 export async function removeLocalData(itemName: string) {

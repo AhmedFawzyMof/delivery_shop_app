@@ -46,7 +46,9 @@ async function getOrderHistory() {
     sumOfOrders.value = res.data.earnings.sum_of_orders;
     sumOfOrderBasedDate.value = res.data.earnings.sum_of_orders_based_on_date;
   } catch (err) {
-    if (err instanceof Error) toast.error(err.message);
+    if (err instanceof Error) {
+      toast.error(err.message);
+    }
   }
 }
 
@@ -57,8 +59,8 @@ function calcDriverCost(totalCost: number) {
   return total;
 }
 
-onMounted(() => {
-  getOrderHistory();
+onMounted(async () => {
+  await getOrderHistory();
 });
 </script>
 <template>
