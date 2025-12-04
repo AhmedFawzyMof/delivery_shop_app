@@ -7,7 +7,6 @@ import RestaurantLogin from "../views/restaurants/LoginPage.vue";
 import RestaurantHomePage from "../views/restaurants/HomePage.vue";
 import RestaurantOrders from "../views/restaurants/HistoryPage.vue";
 import RestaurantReports from "../views/restaurants/OrderReportsPage.vue";
-import RestaurantCustomers from "../views/restaurants/CustomersListPage.vue";
 import RestaurantRegister from "../views/restaurants/RegisterPage.vue";
 
 const router = createRouter({
@@ -48,10 +47,6 @@ const router = createRouter({
     {
       path: "/restaurant/reports",
       component: RestaurantReports,
-    },
-    {
-      path: "/restaurant/customers",
-      component: RestaurantCustomers,
     },
     {
       path: "/restaurant/register",
