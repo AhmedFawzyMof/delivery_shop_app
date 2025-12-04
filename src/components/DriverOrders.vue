@@ -13,7 +13,7 @@ import {
   Truck,
   CheckCircle,
 } from "lucide-vue-next";
-import { h } from "vue";
+import { h, onBeforeUnmount, onMounted, ref } from "vue";
 import { httpRequest } from "@/utils/http";
 import ReportRestaurantForm from "@/components/ReportRestaurantForm.vue";
 import baseUrl from "@/utils/baseUrl";
@@ -24,6 +24,32 @@ const props = defineProps({
     required: true,
   },
 });
+
+const timer = ref("00:00");
+const timerColor = ref("text-green-600");
+let interval: any = null;
+
+function startTimer(createdAt: string) {
+  const start = new Date(createdAt).getTime();
+
+  interval = setInterval(() => {
+    const now = Date.now();
+    const diff = Math.floor((now - start) / 1000);
+
+    const minutes = Math.floor(diff / 60);
+    const seconds = diff % 60;
+
+    timer.value = `${String(minutes).padStart(2, "0")}:${String(
+      seconds
+    ).padStart(2, "0")}`;
+
+    if (minutes >= 1) {
+      timerColor.value = "text-red-600 font-bold";
+    } else {
+      timerColor.value = "text-green-600";
+    }
+  }, 1000);
+}
 
 function calcDriverCost(totalCost: number) {
   const basedPercentage = 0.15;
@@ -61,7 +87,7 @@ const callCustomer = (phone: string) => {
 const handleOrderPickedUp = async (orderId: string) => {
   try {
     const photo = await Camera.getPhoto({
-      quality: 70,
+      quality: 40,
       resultType: CameraResultType.Base64,
       allowEditing: false,
       source: CameraSource.Camera,
@@ -136,11 +162,33 @@ function getStatus(status: string) {
       return "في التحضير";
   }
 }
+onMounted(() => {
+  if (props.order.order_status === "preparing") {
+    startTimer(props.order.created_at);
+  }
+
+  if (props.order.order_status === "ready") {
+    startTimer(props.order.ready_at);
+  }
+
+  if (props.order.order_status === "picked-up") {
+    startTimer(props.order.picked_up_at);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (interval) clearInterval(interval);
+});
 </script>
 <template>
-  <Card class="mb-8 p-2 rounded shadow border-primary/20 bg-primary/5">
+  <Card class="mb-8 p-2 rounded shadow border-primary/20 relative">
     <CardHeader>
       <CardTitle class="flex items-start flex-col gap-2 text-primary">
+        <div class="absolute top-2 left-2">
+          <span :class="timerColor">
+            {{ timer }}
+          </span>
+        </div>
         <Badge :class="getStatusColor(props.order.order_status)">
           <component
             :is="getStatusIcon(props.order.order_status)"
@@ -162,9 +210,9 @@ function getStatus(status: string) {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="space-y-2">
             <h4 class="font-medium">مكان الاستلام</h4>
-            <p class="text-sm">{{ props.order.restaurant.name }}</p>
+            <p class="text-sm">{{ props.order.restaurant.restaurant_name }}</p>
             <p class="text-sm text-muted-foreground">
-              {{ props.order.restaurant.address }}
+              {{ props.order.restaurant.restaurant_address }}
             </p>
           </div>
           <Separator />
@@ -213,6 +261,13 @@ function getStatus(status: string) {
             >
               <Navigation class="h-4 w-4 mr-2" />
               افتح الموقع
+            </Button>
+            <Button
+              variant="outline"
+              @click="callCustomer(props.order.user_phone)"
+            >
+              <Phone class="h-4 w-4 mr-2" />
+              اتصل بالعميل
             </Button>
           </div>
           <div

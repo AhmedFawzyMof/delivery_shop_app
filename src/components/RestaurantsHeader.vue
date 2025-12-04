@@ -47,7 +47,6 @@ const handleLogout = () => {
 const menuItems = [
   { icon: Home, label: "الرئيسية", path: "/restaurant/dashboard" },
   { icon: ShoppingBag, label: "الطلبات", path: "/restaurant/orders" },
-  { icon: Users, label: "العملاء", path: "/restaurant/customers" },
   { icon: BarChart, label: "التقارير", path: "/restaurant/reports" },
 ];
 </script>

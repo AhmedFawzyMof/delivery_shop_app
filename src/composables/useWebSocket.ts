@@ -27,22 +27,15 @@ export function useWebRestaurantSocket(
   const isConnected = ref(false);
   const messages = ref<WSMessage[]>([]);
 
-  const location: string = restaurantLocation.replace(/\\/g, "");
-
   function connect() {
     ws.value = new WebSocket(WS_URL);
-    const jsonLocation = JSON.parse(location);
 
     console.log("Trying to connect to WebSocket:", WS_URL);
 
     ws.value.onopen = () => {
       isConnected.value = true;
       ws.value?.send(
-        JSON.stringify({
-          type: "register_restaurant",
-          restaurant_id: restaurantId,
-          restaurant_location: jsonLocation,
-        })
+        JSON.stringify({ type: "restaurant_init", restaurant_id: restaurantId })
       );
     };
 

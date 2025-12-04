@@ -1,7 +1,8 @@
-import { Preferences } from "@capacitor/preferences";
+import { getLocalData } from "@/utils/localStorage";
 import axios from "axios";
 
 export const baseUrl = "https://deliveryshop.cloud/api";
+// export const baseUrl = "http://localhost:8080/api";
 
 const api = axios.create({
   baseURL: baseUrl,
@@ -10,10 +11,7 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     try {
-      const { value: sessionToken } = await Preferences.get({
-        key: "sessionToken",
-      });
-
+      const sessionToken = await getLocalData("sessionToken");
       if (sessionToken) {
         config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${sessionToken}`;

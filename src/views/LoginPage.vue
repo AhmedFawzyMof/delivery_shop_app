@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,15 +22,19 @@ import { ArrowLeft, ArrowRight, Loader } from "lucide-vue-next";
 import { useRouter } from "vue-router";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { useAuthStore } from "@/stores/auth";
+import { Capacitor } from "@capacitor/core";
+import { toast } from "vue-sonner";
 
 const phone = ref("");
 const password = ref("");
 const shift = ref(8);
-const isFreelancer = ref("no"); // "yes" or "no"
-const loading = ref(false);
+const isFreelancer = ref("no");
+const fileInput = ref<HTMLInputElement | null>(null);
 
 const router = useRouter();
 const authStore = useAuthStore();
+const loading = computed(() => authStore.isLoading);
+const error = computed(() => authStore.error);
 
 onMounted(async () => {
   await authStore.checkSession();
@@ -47,23 +51,40 @@ onMounted(async () => {
 
 async function handleLogin() {
   try {
-    loading.value = true;
+    let selfieBlob: Blob | null = null;
 
-    const photo = await Camera.getPhoto({
-      quality: 40,
-      resultType: CameraResultType.Uri,
-      allowEditing: false,
-      source: CameraSource.Camera,
-      promptLabelHeader: "تأكيد الهوية بالسيلفي",
-    });
+    if (Capacitor.getPlatform() === "web") {
+      fileInput.value?.click();
 
-    if (!photo.path) {
-      alert("لازم تاخد سيلفي علشان تسجل الدخول.");
-      return;
+      const file = await new Promise<File | null>((resolve) => {
+        fileInput.value!.onchange = () => {
+          resolve(fileInput.value!.files?.[0] || null);
+        };
+      });
+
+      if (!file) {
+        toast.error("لازم تختار صورة علشان تسجل الدخول.");
+        return;
+      }
+
+      selfieBlob = file;
+    } else {
+      const photo = await Camera.getPhoto({
+        quality: 40,
+        resultType: CameraResultType.Uri,
+        allowEditing: false,
+        source: CameraSource.Camera,
+        promptLabelHeader: "تأكيد الهوية بالسيلفي",
+      });
+
+      if (!photo.path) {
+        alert("لازم تاخد سيلفي علشان تسجل الدخول.");
+        return;
+      }
+
+      const response = await fetch(photo.webPath!);
+      selfieBlob = await response.blob();
     }
-
-    const response = await fetch(photo.webPath!);
-    const selfieBlob = await response.blob();
 
     const formData = new FormData();
     formData.append("phone", phone.value);
@@ -86,9 +107,7 @@ async function handleLogin() {
     }
   } catch (err) {
     console.error("Login error:", err);
-    alert("حصل خطأ أثناء تسجيل الدخول، حاول تاني.");
-  } finally {
-    loading.value = false;
+    toast.error(error);
   }
 }
 
@@ -136,7 +155,7 @@ function goToRegister() {
               required
             />
           </div>
-
+          <input type="file" accept="image/*" ref="fileInput" class="hidden" />
           <div class="grid gap-2">
             <Label>نوع السائق</Label>
             <Select v-model="isFreelancer">

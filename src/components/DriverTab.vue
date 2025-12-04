@@ -26,14 +26,14 @@ async function getDriverData() {
   }
 }
 
-onMounted(() => {
-  getDriverData();
+onMounted(async () => {
+  await getDriverData();
 });
 
 watch(
-  () => orders.value,
-  () => {
-    getDriverData();
+  () => orders.value.length,
+  async () => {
+    await getDriverData();
   }
 );
 </script>

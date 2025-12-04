@@ -1,8 +1,12 @@
 import { ref } from "vue";
 import { defineStore } from "pinia";
-import { httpRequest } from "@/utils/http";
 import { Preferences } from "@capacitor/preferences";
 import api from "@/api/axios";
+import {
+  getLocalData,
+  removeLocalData,
+  setLocalData,
+} from "@/utils/localStorage";
 
 interface Driver {
   driver_id: number;
@@ -20,11 +24,6 @@ interface Driver {
   created_at: string;
 }
 
-interface DriverSession extends Driver {
-  type: string;
-  shiftDuration: number;
-}
-
 export const useAuthStore = defineStore("auth", () => {
   const driver = ref<Driver | null>(null);
   const user = ref<any>(null);
@@ -34,7 +33,7 @@ export const useAuthStore = defineStore("auth", () => {
   const error = ref<string | null>(null);
 
   async function init() {
-    const { value: token } = await Preferences.get({ key: "sessionToken" });
+    const token = await getLocalData("sessionToken");
 
     if (!token) {
       isAuthenticated.value = false;
@@ -57,10 +56,7 @@ export const useAuthStore = defineStore("auth", () => {
 
       const response = await api.post("/auth/driver/login", formData);
 
-      await Preferences.set({
-        key: "sessionToken",
-        value: response.data.sessionToken,
-      });
+      await setLocalData("sessionToken", response.data.sessionToken);
 
       driver.value = response.data.driver;
       type.value = "driver";
@@ -80,29 +76,19 @@ export const useAuthStore = defineStore("auth", () => {
       isLoading.value = true;
       error.value = null;
 
-      const response = await httpRequest<{
-        user: any;
-        sessionToken: string;
-      }>({
-        url: "/api/auth/restaurant/login",
-        method: "POST",
-        data: {
-          restaurant_name: name,
-          password,
-        },
+      const response = await api.post("/auth/restaurant/login", {
+        restaurant_name: name,
+        password,
       });
 
-      await Preferences.set({
-        key: "sessionToken",
-        value: response.sessionToken,
-      });
+      await setLocalData("sessionToken", response.data.sessionToken);
 
-      user.value = response.user;
+      user.value = response.data.user;
       type.value = "restaurant";
       isAuthenticated.value = true;
       return true;
     } catch (err: any) {
-      error.value = err.message;
+      error.value = err.data.message;
       isAuthenticated.value = false;
       return false;
     } finally {
@@ -112,14 +98,14 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function checkSession() {
     try {
-      const response = await httpRequest<{ user: DriverSession }>({
-        url: "/api/auth/driver",
-        method: "GET",
-      });
+      const response = await api.get("/auth/driver");
 
-      if (!response?.user?.driver_id) return false;
+      if (response.status !== 200) return false;
 
-      driver.value = response.user;
+      if (!response?.data.user?.driver_id) return false;
+
+      driver.value = response.data.user;
+      console.log(response.data.user);
       type.value = "driver";
       isAuthenticated.value = true;
       return true;
@@ -130,14 +116,13 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function checkRestaurantSession() {
     try {
-      const response = await httpRequest<{ user: any }>({
-        url: "/api/auth/restaurant",
-        method: "GET",
-      });
+      const response = await api.get("/api/auth/restaurant");
 
-      if (!response?.user?.id) return false;
+      if (response.status !== 200) return false;
 
-      user.value = response.user;
+      if (!response?.data.user?.id) return false;
+
+      user.value = response.data.user;
       type.value = "restaurant";
       isAuthenticated.value = true;
       return true;
@@ -147,12 +132,7 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   async function logout() {
-    await httpRequest({
-      url: "/api/auth/logout",
-      method: "POST",
-    });
-
-    await Preferences.remove({ key: "sessionToken" });
+    await removeLocalData("sessionToken");
 
     driver.value = null;
     user.value = null;

@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { useAuthStore } from "@/stores/auth";
-import { httpRequest } from "@/utils/http";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { toast } from "vue-sonner";
 import CustomPagination from "./CustomPagination.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Clock, Package, Truck, Loader2, CheckCircle } from "lucide-vue-next";
+import { Clock, Loader2, CheckCircle } from "lucide-vue-next";
 
 import {
   Card,
@@ -39,7 +38,7 @@ const totalPages = computed(() =>
 async function getOrderHistory() {
   try {
     const res = await api.get(
-      `/api/driver/${authStore.driver?.driver_id}?history=true&from=${fromDate.value}&to=${toDate.value}&page=${currentPage.value}`
+      `/driver/${authStore.driver?.driver_id}?history=true&from=${fromDate.value}&to=${toDate.value}&page=${currentPage.value}`
     );
 
     orders.value = res.data.orders;

@@ -32,18 +32,12 @@ const receiptImage = ref<File | null>(null);
 const receiptPreview = ref<string | null>(null);
 const loading = ref(false);
 const newOrder = ref({
-  // customerName: "",
-  // customerPhone: "",
-  // customerAddress: "",
+  customerPhone: "",
   totalAmount: 0,
-  // notes: "",
   deliveryCost: 0,
   order_city: "",
 });
 
-// const searchTimeout = ref<number | null>(null);
-// const searchLoading = ref(false);
-// const foundUsers = ref<any[]>([]);
 const showDropdown = ref(false);
 const phoneInputRef = ref<HTMLElement | null>(null);
 const cities = ref<any>([]);
@@ -84,11 +78,8 @@ const handleCreateOrder = async () => {
   }
 
   const payload = {
-    // customerName: newOrder.value.customerName,
-    // customerPhone: newOrder.value.customerPhone,
-    // customerAddress: newOrder.value.customerAddress,
+    customerPhone: newOrder.value.customerPhone,
     totalAmount: newOrder.value.totalAmount,
-    // notes: newOrder.value.notes,
     deliveryCost: newOrder.value.deliveryCost,
     receiptImage: base64Image,
     order_city: newOrder.value.order_city,
@@ -103,11 +94,8 @@ const handleCreateOrder = async () => {
     toast.success("تم إنشاء الطلب بنجاح");
 
     newOrder.value = {
-      // customerName: "",
-      // customerPhone: "",
-      // customerAddress: "",
+      customerPhone: "",
       totalAmount: 0,
-      // notes: "",
       deliveryCost: 0,
       order_city: "",
     };
@@ -121,47 +109,6 @@ const handleCreateOrder = async () => {
 
   isCreateOrderOpen.value = false;
 };
-
-const applyUserData = (user: any) => {
-  // newOrder.value.customerName = user.user_name;
-  // newOrder.value.customerAddress = user.user_address;
-  // newOrder.value.customerPhone = user.user_phone;
-  showDropdown.value = false;
-};
-
-// watch(
-//   () => newOrder.value.customerPhone,
-//   (phone) => {
-//     if (searchTimeout.value) clearTimeout(searchTimeout.value);
-
-//     if (!phone || phone.length < 5) {
-//       foundUsers.value = [];
-//       showDropdown.value = false;
-//       return;
-//     }
-
-//     searchTimeout.value = window.setTimeout(async () => {
-//       try {
-//         searchLoading.value = true;
-//         showDropdown.value = true;
-//         const res = await httpRequest<any>({
-//           url: `/api/users?search=${phone}&page=1`,
-//           method: "GET",
-//         });
-
-//         foundUsers.value = res.users || [];
-//         console.log(foundUsers.value);
-//         showDropdown.value = true;
-//       } catch (err) {
-//         console.error("Search error:", err);
-//         foundUsers.value = [];
-//         showDropdown.value = false;
-//       } finally {
-//         searchLoading.value = false;
-//       }
-//     }, 400);
-//   }
-// );
 
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
@@ -201,70 +148,6 @@ watch(isCreateOrderOpen, (isOpen) => {
       </DialogHeader>
 
       <div dir="rtl" class="grid gap-4 py-4 relative">
-        <!-- <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-2">
-            <Label for="customerName">اسم العميل</Label>
-            <Input
-              id="customerName"
-              v-model="newOrder.customerName"
-              placeholder="اكتب اسم العميل"
-            />
-          </div>
-
-          <div class="space-y-2 relative">
-            <Label for="customerPhone">رقم التليفون</Label>
-            <Input
-              id="customerPhone"
-              v-model="newOrder.customerPhone"
-              placeholder="+201212158465"
-              @focus="showDropdown = foundUsers.length > 0"
-            />
-
-            <div
-              v-if="showDropdown || searchLoading"
-              class="absolute w-full mt-1 p-2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg"
-            >
-              <div
-                v-if="searchLoading"
-                class="text-sm text-gray-500 dark:text-gray-400 p-2"
-              >
-                جاري البحث...
-              </div>
-              <div
-                v-else-if="foundUsers.length === 0"
-                class="text-sm text-gray-500 dark:text-gray-400 p-2"
-              >
-                لا يوجد نتائج
-              </div>
-              <div v-else class="max-h-48 overflow-y-auto">
-                <div
-                  v-for="user in foundUsers"
-                  :key="user.id"
-                  @click="applyUserData(user)"
-                  class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded-md transition"
-                >
-                  <div class="font-medium text-xs text-white">
-                    اسم العميل: {{ user.user_name }}
-                  </div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400">
-                    رقم التليفون: {{ user.user_phone }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div> -->
-
-        <!-- <div class="space-y-2">
-          <Label for="customerAddress">عنوان التوصيل</Label>
-          <Textarea
-            id="customerAddress"
-            v-model="newOrder.customerAddress"
-            placeholder="اكتب العنوان بالكامل"
-            rows="2"
-          />
-        </div> -->
-
         <div class="space-y-2">
           <Label for="receiptImage">صورة الفاتورة (اختياري)</Label>
           <Input
@@ -313,6 +196,15 @@ watch(isCreateOrderOpen, (isOpen) => {
               </SelectContent>
             </Select>
           </div>
+        </div>
+        <div class="flex flex-col space-y-2">
+          <Label for="customerPhone">رقم هاتف العميل</Label>
+          <Input
+            v-model="newOrder.customerPhone"
+            id="customerPhone"
+            type="tel"
+            placeholder="01212158465"
+          />
         </div>
 
         <div class="flex flex-col space-y-2">
