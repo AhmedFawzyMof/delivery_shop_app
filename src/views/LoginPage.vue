@@ -39,8 +39,8 @@ const error = computed(() => authStore.error);
 
 async function getDeviceId() {
   const info = await Device.getId();
-  console.log("Device UUID:", info.uuid);
-  return info.uuid;
+  toast.info(`Device UUID: ${info}`);
+  return info;
 }
 
 onMounted(async () => {
@@ -99,7 +99,7 @@ async function handleLogin() {
     formData.append("phone", phone.value);
     formData.append("password", password.value);
     formData.append("selfie", selfieBlob, "selfie.jpg");
-    formData.append("deviceInfo", deviceId);
+    formData.append("deviceInfo", String(deviceId));
 
     if (isFreelancer.value === "yes") {
       formData.append("shift", shift.value.toString());
