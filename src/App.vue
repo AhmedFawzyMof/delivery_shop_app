@@ -5,12 +5,17 @@ import "vue-sonner/style.css";
 import { onMounted, onBeforeUnmount } from "vue";
 import { App } from "@capacitor/app";
 import { useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 
 const router = useRouter();
+const route = useRoute();
 
 onMounted(() => {
   const handler = App.addListener("backButton", ({ canGoBack }) => {
     if (canGoBack) {
+      if (route.path === "/driver-panel") {
+        return;
+      }
       router.back();
     } else {
       App.exitApp();

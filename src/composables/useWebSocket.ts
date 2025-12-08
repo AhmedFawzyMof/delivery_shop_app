@@ -1,5 +1,6 @@
 import { ref, onUnmounted, type Ref } from "vue";
 import { toast } from "vue-sonner";
+import { LocalNotifications } from "@capacitor/local-notifications";
 
 const WS_URL = "wss://deliveryshop.cloud/";
 // const WS_URL = "ws://192.168.1.8:3000";
@@ -14,9 +15,37 @@ interface WSMessage {
   [key: string]: any;
 }
 
+export async function requestNotificationPermission() {
+  const permission = await LocalNotifications.requestPermissions();
+
+  if (permission.display === "granted") {
+    console.log("📱 Local notification permission granted");
+    return true;
+  } else {
+    console.warn("❌ Local notification permission denied");
+    return false;
+  }
+}
+
+export async function notifyUser(title: string, body: string) {
+  const permission = await LocalNotifications.checkPermissions();
+  if (permission.display !== "granted") return;
+
+  await LocalNotifications.schedule({
+    notifications: [
+      {
+        id: Date.now(),
+        title,
+        body,
+        schedule: { at: new Date(Date.now() + 100) },
+      },
+    ],
+  });
+}
+
 export function useWebRestaurantSocket(
   restaurantId: number,
-  restaurantLocation: string
+  restaurantLocation: string,
 ): {
   ws: Ref<WebSocket | null>;
   isConnected: Ref<boolean>;
@@ -35,7 +64,10 @@ export function useWebRestaurantSocket(
     ws.value.onopen = () => {
       isConnected.value = true;
       ws.value?.send(
-        JSON.stringify({ type: "restaurant_init", restaurant_id: restaurantId })
+        JSON.stringify({
+          type: "restaurant_init",
+          restaurant_id: restaurantId,
+        }),
       );
     };
 
@@ -43,6 +75,13 @@ export function useWebRestaurantSocket(
       try {
         const data: WSMessage = JSON.parse(event.data);
         messages.value.push(data);
+
+        if (data.type === "order_assaging_failed") {
+          notifyUser(
+            "فشل إرسال الطلب",
+            `الطلب رقم ${data.order_id} لم يتمكن من الإرسال!`,
+          );
+        }
         console.log("📩 New message:", data);
       } catch (err) {
         console.error("⚠️ Failed to parse WebSocket message:", event.data, err);

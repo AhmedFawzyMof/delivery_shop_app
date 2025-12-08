@@ -24,6 +24,7 @@ import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { useAuthStore } from "@/stores/auth";
 import { Capacitor } from "@capacitor/core";
 import { toast } from "vue-sonner";
+import { Device } from "@capacitor/device";
 
 const phone = ref("");
 const password = ref("");
@@ -35,6 +36,12 @@ const router = useRouter();
 const authStore = useAuthStore();
 const loading = computed(() => authStore.isLoading);
 const error = computed(() => authStore.error);
+
+async function getDeviceId() {
+  const info = await Device.getId();
+  console.log("Device UUID:", info.uuid);
+  return info.uuid;
+}
 
 onMounted(async () => {
   await authStore.checkSession();
@@ -86,10 +93,13 @@ async function handleLogin() {
       selfieBlob = await response.blob();
     }
 
+    const deviceId = await getDeviceId();
+
     const formData = new FormData();
     formData.append("phone", phone.value);
     formData.append("password", password.value);
     formData.append("selfie", selfieBlob, "selfie.jpg");
+    formData.append("deviceInfo", deviceId);
 
     if (isFreelancer.value === "yes") {
       formData.append("shift", shift.value.toString());
