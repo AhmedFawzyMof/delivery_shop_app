@@ -1,5 +1,6 @@
 package online.webmadeeasy.delivery_shop;
 
+import android.os.Build;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -75,7 +76,7 @@ public class DriverService extends Service {
         registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
     }
 
-    @Override
+   @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
             driverId = intent.getStringExtra("driver_id");
@@ -92,11 +93,12 @@ public class DriverService extends Service {
                 .setOngoing(true) 
                 .build();
 
-       startForeground(1, notification);
+        startForeground(1, notification);
 
-    setupLocationCallback(); 
-    startWebSocket();
-    startLocationUpdates();
+        // Keep these three - remove the extra setupLocationCallback() call
+        setupLocationCallback(); 
+        startWebSocket();
+        startLocationUpdates();
         
         return START_STICKY;
     }
@@ -159,10 +161,24 @@ public class DriverService extends Service {
                 .build();
 
         webSocket = client.newWebSocket(request, new WebSocketListener() {
-            @Override
-            public void onOpen(WebSocket webSocket, Response response) {
+        @Override
+        public void onOpen(WebSocket webSocket, Response response) {
+            Log.d("DriverService", "WebSocket Connected. Sending Init...");
+
+            // 1. Get Last Known Location immediately
+            fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
+                String lat = "null";
+                String lng = "null";
+
+                if (location != null) {
+                    lat = String.valueOf(location.getLatitude());
+                    lng = String.valueOf(location.getLongitude());
+                }
+
                 String stationedValue = (driverStationedAt == -1) ? "null" : driverStationedAt.toString();
-        
+                String ordersValue = (driverOrders != null && !driverOrders.isEmpty()) ? driverOrders : "[]";
+
+                // 2. Build the JSON including the location object
                 String initJson = "{" +
                     "\"type\":\"driver_init\"," +
                     "\"driver_id\":\"" + driverId + "\"," +
@@ -170,15 +186,18 @@ public class DriverService extends Service {
                     "\"driver_type\":\"driver\"," +
                     "\"driver_city\":\"" + driverCity + "\"," +
                     "\"driver_status\":\"READY\"," +
+                    "\"location\":{\"lat\":" + lat + ",\"lng\":" + lng + "}," + 
                     "\"driver_stationed_at\":" + stationedValue + "," +
-                    "\"driver_orders\":" + driverOrders + "" +
-                "}";
-                
-                webSocket.send(initJson);
-            }
+                    "\"driver_orders\":" + ordersValue +
+                    "}";
 
-            @Override
-            public void onMessage(WebSocket webSocket, String text) {
+                webSocket.send(initJson);
+                Log.d("DriverService", "Init Sent with Location: " + lat + "," + lng);
+            });
+        }
+
+        @Override
+        public void onMessage(WebSocket webSocket, String text) {
                 Log.d("DriverService", "Received: " + text);
                 
                if (text.contains("new_orders_nearby")) {
