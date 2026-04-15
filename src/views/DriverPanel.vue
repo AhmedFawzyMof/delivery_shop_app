@@ -15,7 +15,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectLabel,
   SelectGroup,
 } from "@/components/ui/select";
 import {
@@ -46,11 +45,16 @@ const isOnline = computed(() => authStore.driver?.isOnline);
 // Toggle Service
 const toggleStatus = async () => {
   if (isOnline.value) {
-    await goOffline();
-    toast.info("أنت الآن غير متصل");
+    const closed = await goOffline();
+    if (closed) toast.info("أنت الآن غير متصل");
   } else {
+    // Now 'success' will be true or false based on the return in the composable
     const success = await goOnline();
-    if (success) toast.success("أنت الآن متصل ونشط");
+    if (success) {
+      toast.success("أنت الآن متصل ونشط");
+    } else {
+      toast.error("فشل الاتصال بالخدمة");
+    }
   }
 };
 

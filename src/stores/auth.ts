@@ -1,13 +1,11 @@
 import { ref } from "vue";
 import { defineStore } from "pinia";
-import { Preferences } from "@capacitor/preferences";
 import api from "@/api/axios";
 import {
   getLocalData,
   removeLocalData,
   setLocalData,
 } from "@/utils/localStorage";
-import { toast } from "vue-sonner";
 
 interface Driver {
   driver_id: number;
@@ -103,13 +101,14 @@ export const useAuthStore = defineStore("auth", () => {
   async function checkSession() {
     try {
       const response = await api.get("/auth/driver");
+      if (response.status !== 200 || !response?.data.user?.driver_id)
+        return false;
 
-      if (response.status !== 200) return false;
+      driver.value = {
+        ...response.data.user,
+        isOnline: response.data.user.isOnline ?? false,
+      };
 
-      if (!response?.data.user?.driver_id) return false;
-
-      driver.value = response.data.user;
-      console.log(response.data.user);
       type.value = "driver";
       isAuthenticated.value = true;
       return true;

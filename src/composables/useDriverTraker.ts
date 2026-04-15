@@ -7,24 +7,27 @@ const DriverTracker = registerPlugin<any>("DriverTracker");
 export function useDriverTracker() {
   const ordersStore = useOrdersStore();
   const authStore = useAuthStore();
-  let msgListener: any = null; // Track the listener
+  let msgListener: any = null;
 
   const goOnline = async () => {
-    const driver = authStore.driver;
-    if (!driver) return;
+    const authStore = useAuthStore();
+    const d = authStore.driver;
+
+    if (!d) return false;
 
     try {
       await DriverTracker.startService({
-        driver_id: driver.driver_id.toString(),
-        driver_name: driver.driver_full_name,
-        driver_city: driver.driver_city,
-        driver_stationed_at: ordersStore.orders[0]?.restaurant_id ?? null,
-        driver_orders: ordersStore.orders.map((o: any) => o.order_id),
+        driver_id: String(d.driver_id),
+        driver_name: d.driver_full_name,
+        driver_city: d.driver_city,
+        driver_orders: JSON.stringify([]),
+        driver_stationed_at: d.stationed_at || -1,
       });
-      console.log("Background Service Started Successfully");
+
+      d.isOnline = true;
       return true;
     } catch (err) {
-      console.error("Failed to start background tracking:", err);
+      console.error("Failed to start service:", err);
       return false;
     }
   };
