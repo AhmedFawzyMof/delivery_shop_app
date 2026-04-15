@@ -28,6 +28,8 @@ import { useAuthStore } from "@/stores/auth";
 import { Capacitor } from "@capacitor/core";
 import { toast } from "vue-sonner";
 import { Device } from "@capacitor/device";
+import type { AxiosError } from "axios";
+import axios from "axios";
 
 const phone = ref("");
 const password = ref("");
@@ -99,9 +101,19 @@ async function handleLogin() {
       formData.append("shift", shift.value.toString());
 
     const success = await authStore.login(formData);
-    if (success) router.push("/driver-panel");
+    if (success) {
+      router.push("/driver-panel");
+    } else {
+      toast.error("بيانات الدخول غير صحيحة");
+    }
   } catch (err) {
-    toast.error("حدث خطأ أثناء تسجيل الدخول");
+    if (axios.isAxiosError(err)) {
+      // Access server response: e.g., { message: "Wrong password" }
+      const msg = err.response?.data?.message || "فشل الاتصال بالسيرفر";
+      toast.error(msg);
+    } else {
+      toast.error("حدث خطأ تقني");
+    }
   }
 }
 </script>

@@ -33,6 +33,7 @@ export const useAuthStore = defineStore("auth", () => {
   const type = ref("");
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+  const isOnline = ref<boolean>(false);
 
   async function init() {
     const token = await getLocalData("sessionToken");
@@ -63,6 +64,7 @@ export const useAuthStore = defineStore("auth", () => {
       driver.value = response.data.driver;
       type.value = "driver";
       isAuthenticated.value = true;
+      isOnline.value = true;
       return true;
     } catch (err: any) {
       error.value = err.message;

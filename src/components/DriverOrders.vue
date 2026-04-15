@@ -22,6 +22,7 @@ import {
   getStatusColor,
   getStatusIcon,
 } from "@/lib/utils";
+import { X, ZoomIn } from "lucide-vue-next"; // Add these icons
 
 const props = defineProps({
   order: {
@@ -33,6 +34,11 @@ const props = defineProps({
 const timer = ref("00:00");
 const timerColor = ref("text-green-600");
 let interval: any = null;
+const isImageModalOpen = ref(false);
+
+const toggleImageModal = () => {
+  isImageModalOpen.value = !isImageModalOpen.value;
+};
 
 function startTimer(createdAt: string) {
   const start = new Date(createdAt).getTime();
@@ -232,24 +238,91 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
+      <div v-if="props.order.order_receipt" class="space-y-2">
+        <div class="flex justify-between items-center px-1">
+          <div class="flex items-center gap-2">
+            <FileText class="w-4 h-4 text-slate-400" />
+            <span class="text-xs font-bold text-slate-500">صورة الإيصال</span>
+          </div>
+          <span
+            class="text-[10px] text-blue-500 font-bold flex items-center gap-1"
+          >
+            اضغط للتكبير <ZoomIn class="w-3 h-3" />
+          </span>
+        </div>
+
+        <div
+          @click="toggleImageModal"
+          class="relative cursor-pointer group overflow-hidden rounded-2xl border border-slate-100 shadow-sm active:scale-[0.98] transition-transform"
+        >
+          <img
+            :src="baseUrl + props.order.order_receipt"
+            alt="صورة الإيصال"
+            class="w-full h-40 object-cover bg-white"
+          />
+          <div
+            class="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors"
+          ></div>
+        </div>
+      </div>
 
       <div v-if="props.order.order_receipt" class="space-y-2">
-        <div class="flex items-center gap-2 px-1">
-          <FileText class="w-4 h-4 text-slate-400" />
-          <span class="text-xs font-bold text-slate-500">صورة الإيصال</span>
+        <div class="flex justify-between items-center px-1">
+          <div class="flex items-center gap-2">
+            <FileText class="w-4 h-4 text-slate-400" />
+            <span class="text-xs font-bold text-slate-500">صورة الإيصال</span>
+          </div>
+          <span
+            class="text-[10px] text-blue-500 font-bold flex items-center gap-1"
+          >
+            اضغط للتكبير <ZoomIn class="w-3 h-3" />
+          </span>
         </div>
-        <img
-          :src="baseUrl + props.order.order_receipt"
-          alt="صورة الإيصال"
-          class="w-full h-40 object-contain rounded-2xl bg-white border border-slate-100 shadow-sm"
-        />
+
+        <div
+          @click="toggleImageModal"
+          class="relative cursor-pointer group overflow-hidden rounded-2xl border border-slate-100 shadow-sm active:scale-[0.98] transition-transform"
+        >
+          <img
+            :src="baseUrl + props.order.order_receipt"
+            alt="صورة الإيصال"
+            class="w-full h-40 object-cover bg-white"
+          />
+          <div
+            class="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors"
+          ></div>
+        </div>
       </div>
-      <p
-        v-else
-        class="text-sm text-center text-slate-400 font-medium bg-slate-50 py-3 rounded-xl border border-dashed"
-      >
-        مفيش إيصال مرفوع
-      </p>
+
+      <Transition name="fade">
+        <div
+          v-if="isImageModalOpen"
+          class="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4"
+          @click="toggleImageModal"
+        >
+          <div class="absolute top-10 right-6 flex items-center gap-2 z-10">
+            <span class="text-white text-sm font-bold">إغلاق</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="rounded-full bg-white/10 text-white hover:bg-white/20"
+            >
+              <X class="w-6 h-6" />
+            </Button>
+          </div>
+
+          <img
+            :src="baseUrl + props.order.order_receipt"
+            alt="صورة الإيصال مكبرة"
+            class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+            @click.stop
+          />
+
+          <p class="text-white/60 text-xs mt-6 font-medium">
+            يمكنك العودة بالضغط في أي مكان فارغ
+          </p>
+        </div>
+      </Transition>
 
       <div class="grid grid-cols-2 gap-3">
         <Button
@@ -295,3 +368,20 @@ onBeforeUnmount(() => {
     </CardContent>
   </Card>
 </template>
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Ensure the image stays sharp when zoomed */
+img {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+</style>

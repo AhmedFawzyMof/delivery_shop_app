@@ -92,10 +92,11 @@ public class DriverService extends Service {
                 .setOngoing(true) 
                 .build();
 
-        startForeground(1, notification);
+       startForeground(1, notification);
 
-        startWebSocket();
-        startLocationUpdates();
+    setupLocationCallback(); 
+    startWebSocket();
+    startLocationUpdates();
         
         return START_STICKY;
     }
@@ -118,17 +119,22 @@ public class DriverService extends Service {
             public void onLocationResult(LocationResult locationResult) {
                 if (locationResult == null || webSocket == null || driverId == null) return;
 
-                for (Location location : locationResult.getLocations()) {
+                Location location = locationResult.getLastLocation();
+                if (location != null) {
+                    // Formatting the JSON correctly for the server
+                    String ordersJson = (driverOrders != null && !driverOrders.isEmpty()) ? driverOrders : "[]";
+                    
                     String locJson = "{" +
                         "\"type\":\"location_update\"," +
                         "\"driver_id\":\"" + driverId + "\"," +
                         "\"location\":{\"lat\":" + location.getLatitude() + ",\"lng\":" + location.getLongitude() + "}," +
                         "\"driver_stationed_at\":" + ((driverStationedAt == -1) ? "null" : driverStationedAt) + "," +
-                        "\"driver_orders\":" + driverOrders + "," +
+                        "\"driver_orders\":" + ordersJson + "," +
                         "\"timestamp\":" + System.currentTimeMillis() +
                     "}";
+
                     webSocket.send(locJson);
-                    Log.d("DriverService", "Location Sent: " + location.getLatitude());
+                    Log.d("DriverService", "Location Sent to WebSocket");
                 }
             }
         };
@@ -175,15 +181,17 @@ public class DriverService extends Service {
             public void onMessage(WebSocket webSocket, String text) {
                 Log.d("DriverService", "Received: " + text);
                 
-                // 1. Show native notifications for background alerts
+               if (text.contains("new_orders_nearby")) {
+                    sendOrderNotification("📦 طلبات جديدة بالقرب منك", "هناك طلبات متاحة الآن، افتح التطبيق للمعاينة");
+                }
+
                 if (text.contains("new_order_nearby")) {
-                    sendOrderNotification("📦 طلب جديد قريب منك", "تفقد التطبيق لرؤية تفاصيل الطلب");
+                    sendOrderNotification("📦 طلب جديد", "يوجد طلب جديد متاح حالياً");
                 }
                 if (text.contains("order_status_updated") && text.contains("ready")) {
                     sendOrderNotification("✅ الطلب جاهز", "الطلب الآن جاهز للاستلام من المطعم");
                 }
 
-                // 2. BROADCAST to the Plugin so Vue UI updates
                 Intent intent = new Intent("com.delivery.SWIFT_UI_UPDATE");
                 intent.putExtra("payload", text);
                 sendBroadcast(intent);
@@ -211,18 +219,21 @@ public class DriverService extends Service {
 
     private void sendOrderNotification(String title, String message) {
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        int notificationId = (int) System.currentTimeMillis();
+        String channelId = "orders_channel";
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_notify_chat)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(channelId, "Orders", NotificationManager.IMPORTANCE_HIGH);
+            notificationManager.createNotificationChannel(channel);
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(android.R.drawable.ic_dialog_info) // Replace with your app icon
                 .setContentTitle(title)
                 .setContentText(message)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setAutoCancel(true)
-                .setVibrate(new long[] { 0, 500, 200, 500 })
-                .setDefaults(Notification.DEFAULT_SOUND);
+                .setAutoCancel(true);
 
-        notificationManager.notify(notificationId, builder.build());
+        notificationManager.notify((int) System.currentTimeMillis(), builder.build());
     }
 
     @Override
