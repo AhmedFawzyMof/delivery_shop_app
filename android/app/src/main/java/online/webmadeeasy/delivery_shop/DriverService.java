@@ -23,6 +23,8 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.OnFailureListener;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -163,39 +165,45 @@ public class DriverService extends Service {
         webSocket = client.newWebSocket(request, new WebSocketListener() {
         @Override
         public void onOpen(WebSocket webSocket, Response response) {
-            Log.d("DriverService", "WebSocket Connected. Sending Init...");
+            Log.d("DriverService", "WebSocket Connected! Fetching location for Init...");
 
-            // 1. Get Last Known Location immediately
-            fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
-                String lat = "null";
-                String lng = "null";
+            // Use a try-catch to prevent the entire Service from crashing on a null pointer
+            try {
+                fusedLocationClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
+                    @Override
+                    public void onSuccess(Location location) {
+                        double lat = (location != null) ? location.getLatitude() : 0.0;
+                        double lng = (location != null) ? location.getLongitude() : 0.0;
 
-                if (location != null) {
-                    lat = String.valueOf(location.getLatitude());
-                    lng = String.valueOf(location.getLongitude());
-                }
+                        String stationedValue = (driverStationedAt == null || driverStationedAt == -1) ? "null" : driverStationedAt.toString();
+                        String ordersValue = (driverOrders != null && !driverOrders.isEmpty() && !driverOrders.equals("null")) 
+                                            ? driverOrders : "[]";
 
-                String stationedValue = (driverStationedAt == -1) ? "null" : driverStationedAt.toString();
-                String ordersValue = (driverOrders != null && !driverOrders.isEmpty()) ? driverOrders : "[]";
+                        // Clean manual JSON construction
+                        String initJson = "{" +
+                            "\"type\":\"driver_init\"," +
+                            "\"driver_id\":\"" + driverId + "\"," +
+                            "\"driver_name\":\"" + (driverName != null ? driverName : "Driver") + "\"," +
+                            "\"driver_type\":\"driver\"," +
+                            "\"driver_city\":\"" + (driverCity != null ? driverCity : "Unknown") + "\"," +
+                            "\"driver_status\":\"READY\"," +
+                            "\"location\":{\"lat\":" + lat + ",\"lng\":" + lng + "}," + 
+                            "\"driver_stationed_at\":" + stationedValue + "," +
+                            "\"driver_orders\":" + ordersValue +
+                            "}";
 
-                // 2. Build the JSON including the location object
-                String initJson = "{" +
-                    "\"type\":\"driver_init\"," +
-                    "\"driver_id\":\"" + driverId + "\"," +
-                    "\"driver_name\":\"" + driverName + "\"," +
-                    "\"driver_type\":\"driver\"," +
-                    "\"driver_city\":\"" + driverCity + "\"," +
-                    "\"driver_status\":\"READY\"," +
-                    "\"location\":{\"lat\":" + lat + ",\"lng\":" + lng + "}," + 
-                    "\"driver_stationed_at\":" + stationedValue + "," +
-                    "\"driver_orders\":" + ordersValue +
-                    "}";
-
-                webSocket.send(initJson);
-                Log.d("DriverService", "Init Sent with Location: " + lat + "," + lng);
-            });
+                        Log.d("DriverService", "Sending Init: " + initJson);
+                        webSocket.send(initJson);
+                    }
+                }).addOnFailureListener(e -> {
+                    // If GPS hardware is completely off, still send the init so the driver shows up as "Offline" or "Last Known"
+                    String fallback = "{\"type\":\"driver_init\",\"driver_id\":\"" + driverId + "\",\"driver_status\":\"READY\"}";
+                    webSocket.send(fallback);
+                });
+            } catch (Exception e) {
+                Log.e("DriverService", "Fatal error in onOpen", e);
+            }
         }
-
         @Override
         public void onMessage(WebSocket webSocket, String text) {
                 Log.d("DriverService", "Received: " + text);
